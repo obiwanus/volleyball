@@ -17,8 +17,9 @@ BLACK = (0, 0, 0)
 k_left = k_right = k_up = k_down = 0
 speed_x = speed_y = 3
 ACC = 2
-MAX_SPEED = 15
+MAX_SPEED = 30
 x, y = 100, 100
+MAX_X, MAX_Y = WIDTH - BALL_SIZE, HEIGHT - BALL_SIZE
 
 
 def sign(x):
@@ -55,10 +56,18 @@ while True:
         speed_x = sign(speed_x) * MAX_SPEED
     if abs(speed_y) > MAX_SPEED:
         speed_y = sign(speed_y) * MAX_SPEED
-    if x > WIDTH - BALL_SIZE or x < 0:
+    if x > MAX_X:
         speed_x = -speed_x
-    if y > HEIGHT - BALL_SIZE or y < 0:
+        x = MAX_X
+    elif x < 0:
+        speed_x = -speed_x
+        x = 0
+    if y > MAX_Y:
         speed_y = -speed_y
+        y = MAX_Y
+    elif y < 0:
+        speed_y = -speed_y
+        y = 0
 
     position = x, y = x + speed_x, y + speed_y
     screen.blit(ball, position)
