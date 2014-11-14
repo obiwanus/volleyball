@@ -54,5 +54,5 @@ docs/_build/
 target/
 
 .idea/
-a.out
 .DS_Store
+*.out
