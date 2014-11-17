@@ -1,4 +1,7 @@
 #include <stdio.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <string>
 
 #include "ltexture.h"
 
@@ -8,6 +11,9 @@ bool init();
 
 // Frees media and shuts down SDL
 void close();
+
+// Loads media
+bool loadMedia();
 
 
 // Vars
@@ -20,8 +26,88 @@ SDL_Window* gWindow = NULL;
 // The window renderer
 SDL_Renderer* gRenderer = NULL;
 
-// Currently displayed texture
-SDL_Texture* gTexture = NULL;
+// Scene sprites
+SDL_Rect gSpriteClips[4];
+LTexture gSpriteSheetTexture;
+
+
+void LTexture::render(int x, int y, SDL_Rect* clip)
+{
+    // Set rendering space and render to screen
+    SDL_Rect renderQuad = {x, y, mWidth, mHeight};
+
+    // Set clip rendering dimensions
+    if (clip != NULL) {
+        renderQuad.w = clip->w;
+        renderQuad.h = clip->h;
+    }
+
+    // Render to screen
+    SDL_RenderCopy(gRenderer, mTexture, clip, &renderQuad);
+}
+
+
+LTexture::LTexture()
+{
+    mTexture = NULL;
+    mWidth = 0;
+    mHeight = 0;
+}
+
+
+LTexture::~LTexture()
+{
+    free();
+}
+
+
+bool LTexture::loadFromFile(std::string path)
+{
+    // Get rid of preexisting texture
+    free();
+
+    // The final texture
+    SDL_Texture* newTexture = NULL;
+
+    // Load image
+    SDL_Surface* loadedSurface = IMG_Load(path.c_str());
+    if (loadedSurface == NULL) {
+        printf("Unable to load image. %s\n", IMG_GetError());
+        return false;
+    }
+
+    // Color key image
+    SDL_SetColorKey(loadedSurface, SDL_TRUE, SDL_MapRGB(loadedSurface->format, 0, 0xFF, 0xFF));
+
+    // Create texture from surface pixels
+    newTexture = SDL_CreateTextureFromSurface(gRenderer, loadedSurface);
+    if (newTexture == NULL) {
+        printf("Unable to create texture from %s. %s\n", path.c_str(), SDL_GetError());
+        return false;
+    }
+
+    // Get image dimensions
+    mWidth = loadedSurface->w;
+    mHeight = loadedSurface->h;
+
+    // Get rid of old loaded surface
+    SDL_FreeSurface(loadedSurface);
+
+    mTexture = newTexture;
+    return true;
+}
+
+
+void LTexture::free()
+{
+    if (mTexture == NULL)
+        return;
+
+    SDL_DestroyTexture(mTexture);
+    mTexture = NULL;
+    mWidth = 0;
+    mHeight = 0;
+}
 
 
 int main(int argc, char const *argv[])
@@ -29,6 +115,9 @@ int main(int argc, char const *argv[])
     enum {SUCCESS = 0, ERROR = 1};
 
     if (!init())
+        return ERROR;
+
+    if (!loadMedia())
         return ERROR;
 
     bool quit = false;
@@ -42,50 +131,60 @@ int main(int argc, char const *argv[])
             }
         }
 
-        SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+        // Clear screen
+        SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
         SDL_RenderClear(gRenderer);
 
-        SDL_Rect fillRect;
+        // Render sprites
+        gSpriteSheetTexture.render(0, 0, &gSpriteClips[0]);
+        gSpriteSheetTexture.render(SCREEN_WIDTH - gSpriteClips[1].w, 0, &gSpriteClips[1]);
+        gSpriteSheetTexture.render(0, SCREEN_HEIGHT - gSpriteClips[2].h, &gSpriteClips[2]);
+        gSpriteSheetTexture.render(
+            SCREEN_WIDTH - gSpriteClips[3].w, SCREEN_HEIGHT - gSpriteClips[3].h, &gSpriteClips[3]
+        );
 
-        // Top left viewport
-        SDL_Rect topLeftViewport = { 0, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2};
-        SDL_RenderSetViewport(gRenderer, &topLeftViewport);
-        
-        fillRect.x = topLeftViewport.w / 4;
-        fillRect.y = topLeftViewport.h / 4;
-        fillRect.w = topLeftViewport.w / 2;
-        fillRect.h = topLeftViewport.h / 2;
-        SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0x88);
-        SDL_RenderFillRect(gRenderer, &fillRect);
-
-        // Top right viewport
-        SDL_Rect topRightViewport = {SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2};
-        SDL_RenderSetViewport(gRenderer, &topRightViewport);
-        
-        fillRect.x = topRightViewport.w / 4;
-        fillRect.y = topRightViewport.h / 4;
-        fillRect.w = topRightViewport.w / 2;
-        fillRect.h = topRightViewport.h / 2;
-        SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0x88);
-        SDL_RenderFillRect(gRenderer, &fillRect);
-
-        // Bottom viewport
-        SDL_Rect bottomViewport = { 0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2};
-        SDL_RenderSetViewport(gRenderer, &bottomViewport);
-        
-        fillRect.x = bottomViewport.w / 4;
-        fillRect.y = bottomViewport.h / 4;
-        fillRect.w = bottomViewport.w / 2;
-        fillRect.h = bottomViewport.h / 2;
-        SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0x88);
-        SDL_RenderFillRect(gRenderer, &fillRect);
-
+        // Update screen
         SDL_RenderPresent(gRenderer);
     }
 
     close();
 
     return SUCCESS;
+}
+
+
+bool loadMedia()
+{
+    if (!gSpriteSheetTexture.loadFromFile("dots.png")) {
+        printf("Failed to load sprite sheet texture.\n");
+        return false;
+    }
+
+    // Set top left sprite
+    gSpriteClips[0].x = 0;
+    gSpriteClips[0].y = 0;
+    gSpriteClips[0].w = 100;
+    gSpriteClips[0].h = 100;
+    
+    // Set top right sprite
+    gSpriteClips[1].x = 100;
+    gSpriteClips[1].y = 0;
+    gSpriteClips[1].w = 100;
+    gSpriteClips[1].h = 100;
+    
+    // Set bottom left sprite
+    gSpriteClips[2].x = 0;
+    gSpriteClips[2].y = 100;
+    gSpriteClips[2].w = 100;
+    gSpriteClips[2].h = 100;
+
+    // Set bottom right sprite
+    gSpriteClips[3].x = 100;
+    gSpriteClips[3].y = 100;
+    gSpriteClips[3].w = 100;
+    gSpriteClips[3].h = 100;
+
+    return true;
 }
 
 

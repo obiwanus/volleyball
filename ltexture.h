@@ -1,6 +1,10 @@
 #ifndef LTEXTURE_H
 #define LTEXTURE_H
 
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <string>
+
 
 // Texture wrapper class
 class LTexture
