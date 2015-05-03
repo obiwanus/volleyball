@@ -9,18 +9,15 @@
 
 - (void) applicationDidFinishLaunching: (id) sender
 {
-    #pragma unused(sender)
 }
 
 - (BOOL) applicationShouldTerminateAfterLastWindowClosed: (NSApplication *) sender
 {
-    #pragma unused(sender)
     return YES;
 }
 
 - (void) applicationWillTerminate: (NSApplication *) sender
 {
-    #pragma unused(sender)
 }
 
 @end
@@ -57,9 +54,6 @@ void create_main_menu()
 
 int main(int argc, char *argv[])
 {
-    #pragma unused(argc)
-    #pragma unused(argv)
-
     @autoreleasepool
     {
         NSApplication *app = [NSApplication sharedApplication];
