@@ -23,6 +23,29 @@
 @end
 
 
+@interface VolleyballView : NSView
+@end
+
+
+@implementation VolleyballView
+
+- (id) init
+{
+    self = [super init];
+
+    if (self == nil)
+    {
+        return nil;
+    }
+
+    // [self setup];
+
+    return self;
+}
+
+@end
+
+
 void create_main_menu()
 {
     NSMenu *menubar = [NSMenu new];
@@ -83,6 +106,11 @@ int main(int argc, char *argv[])
                 defer:NO
             ];
 
+        VolleyballView* view = [[VolleyballView alloc] init];
+        [view setFrame:[[window contentView] bounds]];
+        [view setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+
+        [[window contentView] addSubview:view];
         [window setMinSize:NSMakeSize(100, 100)];
         [window setTitle:@"Volleyball"];
         [window makeKeyAndOrderFront:nil];
