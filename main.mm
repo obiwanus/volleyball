@@ -23,7 +23,7 @@
 @end
 
 
-@interface VolleyballView : NSView
+@interface VolleyballView : NSImageView
 @end
 
 
@@ -41,6 +41,45 @@
     // [self setup];
 
     return self;
+}
+
+- (void) toggleFullScreen: (id)sender
+{
+    printf("Toggle full screen\n");
+}
+
+- (BOOL) acceptsFirstResponder
+{
+    return YES;
+}
+
+- (void) mouseDragged: (NSEvent *) event
+{
+    NSRect rect;
+    NSPoint clickLocation;
+
+    // convert the mouse-down location into the view coords
+    clickLocation = [self convertPoint:[event locationInWindow]
+                          fromView:nil];
+
+    rect.origin = clickLocation;
+    rect.size.width = 10.0;
+    rect.size.height = 10.0;
+
+    [[NSColor redColor] set];
+    [NSBezierPath fillRect:rect];
+
+    [self displayRect:rect];
+}
+
+- (void) mouseUp: (NSEvent *) event
+{
+
+}
+
+- (BOOL) isOpaque
+{
+    return YES;
 }
 
 @end
