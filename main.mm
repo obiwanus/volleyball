@@ -38,8 +38,6 @@
         return nil;
     }
 
-    // [self setup];
-
     return self;
 }
 
@@ -53,23 +51,61 @@
     return YES;
 }
 
-- (void) mouseDragged: (NSEvent *) event
+// - (void) mouseDragged: (NSEvent *) event
+// {
+//     NSRect rect;
+//     NSPoint clickLocation;
+
+//     // convert the mouse-down location into the view coords
+//     clickLocation = [self convertPoint:[event locationInWindow]
+//                           fromView:nil];
+
+//     rect.origin = clickLocation;
+//     rect.size.width = 10.0;
+//     rect.size.height = 10.0;
+
+//     [[NSColor redColor] set];
+//     [NSBezierPath fillRect:rect];
+
+//     [self displayRect:rect];
+// }
+
+- (void) setUp
 {
-    NSRect rect;
-    NSPoint clickLocation;
+    int Width = self.bounds.size.width;
+    int Height = self.bounds.size.height;
+    int BytesPerPixel = 4;
 
-    // convert the mouse-down location into the view coords
-    clickLocation = [self convertPoint:[event locationInWindow]
-                          fromView:nil];
+    unsigned char *offscreenBuffer = (unsigned char *) malloc(Width * Height * BytesPerPixel);
 
-    rect.origin = clickLocation;
-    rect.size.width = 10.0;
-    rect.size.height = 10.0;
+    // Fill the buffer
+    for (int i = 0; i < Height; i++)
+    {
+        uint32 *Row = (uint32 *) (offscreenBuffer + i * BytesPerPixel * Width);
+        for (int j = 0; j < Width; j++)
+        {
+            Row[j] = 0xAAFFAAFF;
+        }
+    }
 
-    [[NSColor redColor] set];
-    [NSBezierPath fillRect:rect];
+    NSBitmapImageRep *ImageRep = [
+        [NSBitmapImageRep alloc]
+            initWithBitmapDataPlanes:&offscreenBuffer
+            pixelsWide:Width
+            pixelsHigh:Height
+            bitsPerSample:8
+            samplesPerPixel:BytesPerPixel
+            hasAlpha:YES
+            isPlanar:NO
+            colorSpaceName:NSCalibratedRGBColorSpace
+            bytesPerRow:(Width * BytesPerPixel)
+            bitsPerPixel:(BytesPerPixel * 8)
+    ];
 
-    [self displayRect:rect];
+    NSImage *Image = [[NSImage alloc] init];
+    [Image addRepresentation:ImageRep];
+
+    [self setImage:Image];
 }
 
 - (void) mouseUp: (NSEvent *) event
@@ -147,6 +183,7 @@ int main(int argc, char *argv[])
 
         VolleyballView* view = [[VolleyballView alloc] init];
         [view setFrame:[[window contentView] bounds]];
+        [view setUp];
         [view setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
 
         [[window contentView] addSubview:view];
