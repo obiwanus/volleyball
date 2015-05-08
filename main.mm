@@ -24,6 +24,15 @@
 
 
 @interface VolleyballView : NSImageView
+{
+    uint8 *offscreenBuffer;
+    int Width;
+    int Height;
+    CGDataProviderRef provider;
+    CGColorSpaceRef colorspace;
+    CGImageRef image;
+    CGContextRef context;
+}
 @end
 
 
@@ -38,7 +47,24 @@
         return nil;
     }
 
+    offscreenBuffer = NULL;  // not allocated yet
+    Width = 0;
+    Height = 0;
+
     return self;
+}
+
+- (void) dealloc
+{
+    if (offscreenBuffer)
+    {
+        free(offscreenBuffer);
+    }
+
+    CGColorSpaceRelease(colorspace);
+    CGDataProviderRelease(provider);
+
+    [super dealloc];
 }
 
 - (void) toggleFullScreen: (id)sender
@@ -51,61 +77,98 @@
     return YES;
 }
 
-// - (void) mouseDragged: (NSEvent *) event
-// {
-//     NSRect rect;
-//     NSPoint clickLocation;
+- (void) drawRectangle: (NSRect) rect
+{
+    NSLog(@"Draw at: %ld", (long) offscreenBuffer);
+    int i = 0;
+    for (i = rect.origin.y;
+         i < Height && i < (rect.origin.y + rect.size.height); i++)
+    {
+        uint32 *Row = (uint32 *) offscreenBuffer + i * Width;
+        for (int j = rect.origin.x;
+             j < Width && j < rect.origin.x + rect.size.width; j++)
+        {
+            Row[j] = 0x44444400;
+        }
+    }
+    image = CGImageCreate(
+        Width, Height, 8, 32, Width * 4, colorspace,
+        kCGBitmapByteOrder32Big,
+        provider, NULL, true, kCGRenderingIntentDefault);
+    CGContextDrawImage(context, self.bounds, image);
+}
 
-//     // convert the mouse-down location into the view coords
-//     clickLocation = [self convertPoint:[event locationInWindow]
-//                           fromView:nil];
+- (void) mouseDown: (NSEvent *) event
+{
+    NSRect rect;
+    NSPoint clickLocation;
 
-//     rect.origin = clickLocation;
-//     rect.size.width = 10.0;
-//     rect.size.height = 10.0;
+    // convert the mouse-down location into the view coords
+    clickLocation = [self convertPoint:[event locationInWindow]
+                          fromView:nil];
 
-//     [[NSColor redColor] set];
-//     [NSBezierPath fillRect:rect];
+    rect.origin = clickLocation;
+    rect.size.width = 40.0;
+    rect.size.height = 40.0;
 
-//     [self displayRect:rect];
-// }
+    [self drawRectangle:rect];
+}
 
 - (void) setUp
 {
-    int Width = self.bounds.size.width;
-    int Height = self.bounds.size.height;
+    Width = self.bounds.size.width;
+    Height = self.bounds.size.height;
     int BytesPerPixel = 4;
+    int BufferLength = Width * Height * BytesPerPixel;
 
-    unsigned char *offscreenBuffer = (unsigned char *) malloc(Width * Height * BytesPerPixel);
+    offscreenBuffer = (uint8 *) malloc(BufferLength);
 
     // Fill the buffer
     for (int i = 0; i < Height; i++)
     {
-        uint32 *Row = (uint32 *) (offscreenBuffer + i * BytesPerPixel * Width);
+        uint32 *Row = (uint32 *) offscreenBuffer + i * Width;
         for (int j = 0; j < Width; j++)
         {
-            Row[j] = 0xAAFFAAFF;
+            uint8 Blue = (uint8) j;
+            uint8 Green = (uint8) i;
+
+            Row[j] = ((Green << 16) | Blue << 8);
         }
     }
 
-    NSBitmapImageRep *ImageRep = [
-        [NSBitmapImageRep alloc]
-            initWithBitmapDataPlanes:&offscreenBuffer
-            pixelsWide:Width
-            pixelsHigh:Height
-            bitsPerSample:8
-            samplesPerPixel:BytesPerPixel
-            hasAlpha:YES
-            isPlanar:NO
-            colorSpaceName:NSCalibratedRGBColorSpace
-            bytesPerRow:(Width * BytesPerPixel)
-            bitsPerPixel:(BytesPerPixel * 8)
-    ];
+    // Create a CGImage with the pixel data
+    provider = CGDataProviderCreateWithData(NULL, offscreenBuffer,
+                                            BufferLength, NULL);
 
-    NSImage *Image = [[NSImage alloc] init];
-    [Image addRepresentation:ImageRep];
+    colorspace = CGColorSpaceCreateDeviceRGB();
+    image = CGImageCreate(
+        Width, Height, 8, 32, Width * 4, colorspace,
+        kCGBitmapByteOrder32Big,
+        provider, NULL, true, kCGRenderingIntentDefault);
 
-    [self setImage:Image];
+    context = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
+    CGContextDrawImage(context, self.bounds, image);
+
+
+    // NSBitmapImageRep *ImageRep = [
+    //     [NSBitmapImageRep alloc]
+    //         initWithBitmapDataPlanes:&offscreenBuffer
+    //         pixelsWide:Width
+    //         pixelsHigh:Height
+    //         bitsPerSample:8
+    //         samplesPerPixel:BytesPerPixel
+    //         hasAlpha:YES
+    //         isPlanar:NO
+    //         colorSpaceName:NSDeviceRGBColorSpace
+    //         bytesPerRow:(Width * BytesPerPixel)
+    //         bitsPerPixel:(BytesPerPixel * 8)
+    // ];
+
+    // CGImage *Image = [[CGImage alloc] init];
+    // [Image addRepresentation:ImageRep];
+
+    // [self setImage:Image];
+    [self display];
 }
 
 - (void) mouseUp: (NSEvent *) event
