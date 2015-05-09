@@ -29,7 +29,6 @@
     int Width;
     int Height;
     CGDataProviderRef provider;
-    CGColorSpaceRef colorspace;
     CGImageRef image;
     CGContextRef context;
 }
@@ -61,7 +60,6 @@
         free(offscreenBuffer);
     }
 
-    CGColorSpaceRelease(colorspace);
     CGDataProviderRelease(provider);
 
     [super dealloc];
@@ -91,11 +89,6 @@
             Row[j] = 0x44444400;
         }
     }
-    image = CGImageCreate(
-        Width, Height, 8, 32, Width * 4, colorspace,
-        kCGBitmapByteOrder32Big,
-        provider, NULL, true, kCGRenderingIntentDefault);
-    CGContextDrawImage(context, self.bounds, image);
 }
 
 - (void) mouseDown: (NSEvent *) event
@@ -112,6 +105,12 @@
     rect.size.height = 40.0;
 
     [self drawRectangle:rect];
+}
+
+- (void) displayBitmap
+{
+    // Displays the contents of the offscreen buffer in the view
+
 }
 
 - (void) setUp
@@ -140,11 +139,22 @@
     provider = CGDataProviderCreateWithData(NULL, offscreenBuffer,
                                             BufferLength, NULL);
 
-    colorspace = CGColorSpaceCreateDeviceRGB();
+    CGColorSpaceRef colorspace = CGColorSpaceCreateDeviceRGB();
     image = CGImageCreate(
-        Width, Height, 8, 32, Width * 4, colorspace,
-        kCGBitmapByteOrder32Big,
-        provider, NULL, true, kCGRenderingIntentDefault);
+        Width,
+        Height,
+        8,      // bits per component
+        32,     // bits per pixel
+        Width * 4,  // bytes per row
+        colorspace,
+        kCGBitmapByteOrder32Big,  // bitmap info
+        provider,
+        NULL,   // decode array
+        true,   // should interpolate
+        kCGRenderingIntentDefault   // rendering intent
+    );
+
+    CGColorSpaceRelease(colorspace);
 
     context = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
     CGContextDrawImage(context, self.bounds, image);
