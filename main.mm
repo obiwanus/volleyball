@@ -65,11 +65,6 @@
     [super dealloc];
 }
 
-- (void) toggleFullScreen: (id)sender
-{
-    printf("Toggle full screen\n");
-}
-
 - (BOOL) acceptsFirstResponder
 {
     return YES;
