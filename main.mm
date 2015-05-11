@@ -154,25 +154,6 @@
     context = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
     CGContextDrawImage(context, self.bounds, image);
 
-
-    // NSBitmapImageRep *ImageRep = [
-    //     [NSBitmapImageRep alloc]
-    //         initWithBitmapDataPlanes:&offscreenBuffer
-    //         pixelsWide:Width
-    //         pixelsHigh:Height
-    //         bitsPerSample:8
-    //         samplesPerPixel:BytesPerPixel
-    //         hasAlpha:YES
-    //         isPlanar:NO
-    //         colorSpaceName:NSDeviceRGBColorSpace
-    //         bytesPerRow:(Width * BytesPerPixel)
-    //         bitsPerPixel:(BytesPerPixel * 8)
-    // ];
-
-    // CGImage *Image = [[CGImage alloc] init];
-    // [Image addRepresentation:ImageRep];
-
-    // [self setImage:Image];
     [self display];
 }
 
