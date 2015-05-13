@@ -1,4 +1,5 @@
 #include <Cocoa/Cocoa.h>
+#include <OpenGL/gl.h>
 
 
 @interface VolleyballAppDelegate : NSObject<NSApplicationDelegate>
@@ -23,14 +24,11 @@
 @end
 
 
-@interface VolleyballView : NSImageView
+@interface VolleyballView : NSOpenGLView
 {
     uint8 *offscreenBuffer;
     int Width;
     int Height;
-    CGDataProviderRef provider;
-    CGImageRef image;
-    CGContextRef context;
 }
 @end
 
@@ -53,14 +51,29 @@
     return self;
 }
 
+- (void) drawRect: (NSRect) bounds
+{
+    glClearColor(0, 0, 0, 0);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glColor3f(1.0f, 0.85f, 0.35f);
+    glBegin(GL_TRIANGLES);
+    {
+        glVertex3f(  0.0,  0.6, 0.0);
+        glVertex3f( -0.2, -0.3, 0.0);
+        glVertex3f(  0.2, -0.3 ,0.0);
+    }
+    glEnd();
+
+    glFlush();
+}
+
 - (void) dealloc
 {
     if (offscreenBuffer)
     {
         free(offscreenBuffer);
     }
-
-    CGDataProviderRelease(provider);
 
     [super dealloc];
 }
@@ -70,36 +83,36 @@
     return YES;
 }
 
-- (void) drawRectangle: (NSRect) rect
-{
-    NSLog(@"Draw at: %ld", (long) offscreenBuffer);
-    int i = 0;
-    for (i = rect.origin.y;
-         i < Height && i < (rect.origin.y + rect.size.height); i++)
-    {
-        uint32 *Row = (uint32 *) offscreenBuffer + i * Width;
-        for (int j = rect.origin.x;
-             j < Width && j < rect.origin.x + rect.size.width; j++)
-        {
-            Row[j] = 0x44444400;
-        }
-    }
-}
+// - (void) drawRectangle: (NSRect) rect
+// {
+//     NSLog(@"Draw at: %ld", (long) offscreenBuffer);
+//     int i = 0;
+//     for (i = rect.origin.y;
+//          i < Height && i < (rect.origin.y + rect.size.height); i++)
+//     {
+//         uint32 *Row = (uint32 *) offscreenBuffer + i * Width;
+//         for (int j = rect.origin.x;
+//              j < Width && j < rect.origin.x + rect.size.width; j++)
+//         {
+//             Row[j] = 0x44444400;
+//         }
+//     }
+// }
 
 - (void) mouseDown: (NSEvent *) event
 {
-    NSRect rect;
-    NSPoint clickLocation;
+    // NSRect rect;
+    // NSPoint clickLocation;
 
-    // convert the mouse-down location into the view coords
-    clickLocation = [self convertPoint:[event locationInWindow]
-                          fromView:nil];
+    // // convert the mouse-down location into the view coords
+    // clickLocation = [self convertPoint:[event locationInWindow]
+    //                       fromView:nil];
 
-    rect.origin = clickLocation;
-    rect.size.width = 40.0;
-    rect.size.height = 40.0;
+    // rect.origin = clickLocation;
+    // rect.size.width = 40.0;
+    // rect.size.height = 40.0;
 
-    [self drawRectangle:rect];
+    // [self drawRectangle:rect];
 }
 
 - (void) displayBitmap
@@ -130,31 +143,31 @@
         }
     }
 
-    // Create a CGImage with the pixel data
-    provider = CGDataProviderCreateWithData(NULL, offscreenBuffer,
-                                            BufferLength, NULL);
+    // // Create a CGImage with the pixel data
+    // provider = CGDataProviderCreateWithData(NULL, offscreenBuffer,
+    //                                         BufferLength, NULL);
 
-    CGColorSpaceRef colorspace = CGColorSpaceCreateDeviceRGB();
-    image = CGImageCreate(
-        Width,
-        Height,
-        8,      // bits per component
-        32,     // bits per pixel
-        Width * 4,  // bytes per row
-        colorspace,
-        kCGBitmapByteOrder32Big,  // bitmap info
-        provider,
-        NULL,   // decode array
-        true,   // should interpolate
-        kCGRenderingIntentDefault   // rendering intent
-    );
+    // CGColorSpaceRef colorspace = CGColorSpaceCreateDeviceRGB();
+    // image = CGImageCreate(
+    //     Width,
+    //     Height,
+    //     8,      // bits per component
+    //     32,     // bits per pixel
+    //     Width * 4,  // bytes per row
+    //     colorspace,
+    //     kCGBitmapByteOrder32Big,  // bitmap info
+    //     provider,
+    //     NULL,   // decode array
+    //     true,   // should interpolate
+    //     kCGRenderingIntentDefault   // rendering intent
+    // );
 
-    CGColorSpaceRelease(colorspace);
+    // CGColorSpaceRelease(colorspace);
 
-    context = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
-    CGContextDrawImage(context, self.bounds, image);
+    // context = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
+    // CGContextDrawImage(context, self.bounds, image);
 
-    [self display];
+    // [self display];
 }
 
 - (void) mouseUp: (NSEvent *) event

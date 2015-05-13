@@ -1,2 +1,2 @@
 default:
-	cc -o Volleyball -framework Cocoa main.mm
+	cc -o Volleyball -framework Cocoa -framework OpenGL main.mm
