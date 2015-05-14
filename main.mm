@@ -48,6 +48,14 @@
     Width = 0;
     Height = 0;
 
+    NSOpenGLPixelFormatAttribute attrs[] =
+    {
+        NSOpenGLPFAAccelerated,
+        NSOpenGLPFADoubleBuffer,
+        NSOpenGLPFADepthSize, 24,
+        0
+    };
+
     return self;
 }
 
