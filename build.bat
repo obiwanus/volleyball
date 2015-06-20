@@ -7,17 +7,17 @@ if not defined DevEnvDir (
     call misc\shell.bat
 )
 
-IF NOT EXIST ..\..\build mkdir ..\..\build
-pushd ..\..\build
+IF NOT EXIST ..\build mkdir ..\build
+pushd ..\build
 
 @del /Q *.pdb > NUL 2> NUL
 @del /Q *.hmi > NUL 2> NUL
 
 REM 32-bit build
-REM cl %CommonCompilerFlags% ..\volleyball\win32_volleyball.cpp /link -subsystem:windows,5.1 %CommonLinkerFlags% 
+REM cl %CommonCompilerFlags% src\win32_volleyball.cpp /link -subsystem:windows,5.1 %CommonLinkerFlags% 
 
 REM 64-bit build
-REM cl %CommonCompilerFlags% ..\volleyball\volleyball.cpp -LD /link -incremental:no -PDB:volleyball_%random%.pdb  # TODO: /EXPORT:GameUpdateAndRender /EXPORT:GameGetSoundSamples
-cl %CommonCompilerFlags% ..\volleyball\win32_volleyball.cpp /link %CommonLinkerFlags%
+REM cl %CommonCompilerFlags% src\volleyball.cpp -LD /link -incremental:no -PDB:volleyball_%random%.pdb  # TODO: /EXPORT:GameUpdateAndRender /EXPORT:GameGetSoundSamples
+cl %CommonCompilerFlags% src\win32_volleyball.cpp /link %CommonLinkerFlags%
 
 popd
