@@ -1,5 +1,12 @@
 #include <windows.h>
+#include <stdint.h>
 
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef int8_t i8;
+typedef int16_t i16;
+typedef int32_t i32;
 
 #define internal static
 #define global static
@@ -19,6 +26,27 @@ struct win32_offscreen_buffer
 global bool GlobalRunning;
 
 global win32_offscreen_buffer GlobalOffscreenBuffer;
+
+
+internal void
+Win32DrawGradient(int XOffset, int YOffset)
+{
+    u8 *Row = (u8 *) GlobalOffscreenBuffer.Memory;
+    int Pitch = GlobalOffscreenBuffer.Width * GlobalOffscreenBuffer.BytesPerPixel;
+    
+    for (int Y = 0; Y < GlobalOffscreenBuffer.Height; Y++)
+    {
+        u32 *Pixel = (u32 *) Row;
+        for (int X = 0; X < GlobalOffscreenBuffer.Width; X++)
+        {
+            u8 Red = (u8) (X + XOffset);
+            u8 Green = (u8) (Y + YOffset);
+            u8 Blue = 0;
+            *Pixel++ = Red << 16 | Green << 8 | Blue;
+        }
+        Row += Pitch;
+    }
+}
 
 
 internal void
@@ -56,7 +84,6 @@ Win32ResizeDIBSection(int Width, int Height)
     int BitmapMemorySize = (Width * Height) * GlobalOffscreenBuffer.BytesPerPixel;
     GlobalOffscreenBuffer.Memory = VirtualAlloc(0, BitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
 }
-
 
 
 LRESULT CALLBACK 
@@ -139,20 +166,22 @@ WinMain(HINSTANCE hInstance,
         if (Window)
         {
             GlobalRunning = true;
+            int XOffset = 0;
+            int YOffset = 0;
 
             while (GlobalRunning)
             {
                 MSG Message;
-                BOOL MessageResult = GetMessage(&Message, 0, 0, 0);
-                if (MessageResult > 0)
+                while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
                 {
                     TranslateMessage(&Message);
                     DispatchMessageA(&Message);
                 }
-                else
-                {
-                    GlobalRunning = false;
-                }
+
+                Win32DrawGradient(XOffset++, YOffset++);
+                HDC hdc = GetDC(Window);
+                Win32UpdateWindow(hdc);
+                ReleaseDC(Window, hdc);
             }
         }
     }
