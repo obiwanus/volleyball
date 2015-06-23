@@ -26,11 +26,12 @@
 @end
 
 
-@interface VolleyballView : NSOpenGLView
+@interface VolleyballView : NSImageView
 {
     uint8 *offscreenBuffer;
     int Width;
     int Height;
+    CGImage *Image;
 }
 @end
 
@@ -50,32 +51,7 @@
     Width = 0;
     Height = 0;
 
-    NSOpenGLPixelFormatAttribute attrs[] =
-    {
-        NSOpenGLPFAAccelerated,
-        NSOpenGLPFADoubleBuffer,
-        NSOpenGLPFADepthSize, 24,
-        0
-    };
-
     return self;
-}
-
-- (void) drawRect: (NSRect) bounds
-{
-    glClearColor(0, 0, 0, 0);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    glColor3f(1.0f, 0.85f, 0.35f);
-    glBegin(GL_TRIANGLES);
-    {
-        glVertex3f(  0.0,  0.6, 0.0);
-        glVertex3f( -0.2, -0.3, 0.0);
-        glVertex3f(  0.2, -0.3 ,0.0);
-    }
-    glEnd();
-
-    glFlush();
 }
 
 - (void) dealloc
@@ -93,42 +69,15 @@
     return YES;
 }
 
-// - (void) drawRectangle: (NSRect) rect
-// {
-//     NSLog(@"Draw at: %ld", (long) offscreenBuffer);
-//     int i = 0;
-//     for (i = rect.origin.y;
-//          i < Height && i < (rect.origin.y + rect.size.height); i++)
-//     {
-//         uint32 *Row = (uint32 *) offscreenBuffer + i * Width;
-//         for (int j = rect.origin.x;
-//              j < Width && j < rect.origin.x + rect.size.width; j++)
-//         {
-//             Row[j] = 0x44444400;
-//         }
-//     }
-// }
-
-- (void) mouseDown: (NSEvent *) event
+- (BOOL) isFlipped
 {
-    // NSRect rect;
-    // NSPoint clickLocation;
-
-    // // convert the mouse-down location into the view coords
-    // clickLocation = [self convertPoint:[event locationInWindow]
-    //                       fromView:nil];
-
-    // rect.origin = clickLocation;
-    // rect.size.width = 40.0;
-    // rect.size.height = 40.0;
-
-    // [self drawRectangle:rect];
+    return YES;
 }
 
-- (void) displayBitmap
+- (void) drawRect: (NSRect) rect
 {
-    // Displays the contents of the offscreen buffer in the view
-
+    NSLog(@"draw rect: %f x %f", rect.size.width, rect.size.height);
+    // [Image drawAtPoint:NSZeroPoint fromRect:NSZeroRect operation:NSCompositeSourceOver fraction:1];
 }
 
 - (void) setUp
@@ -153,31 +102,32 @@
         }
     }
 
-    // // Create a CGImage with the pixel data
-    // provider = CGDataProviderCreateWithData(NULL, offscreenBuffer,
-    //                                         BufferLength, NULL);
+    // Create a CGImage with the pixel data
+    CGDataProviderRef provider = CGDataProviderCreateWithData(NULL, offscreenBuffer,
+                                                           BufferLength, NULL);
 
-    // CGColorSpaceRef colorspace = CGColorSpaceCreateDeviceRGB();
-    // image = CGImageCreate(
-    //     Width,
-    //     Height,
-    //     8,      // bits per component
-    //     32,     // bits per pixel
-    //     Width * 4,  // bytes per row
-    //     colorspace,
-    //     kCGBitmapByteOrder32Big,  // bitmap info
-    //     provider,
-    //     NULL,   // decode array
-    //     true,   // should interpolate
-    //     kCGRenderingIntentDefault   // rendering intent
-    // );
+    CGColorSpaceRef colorspace = CGColorSpaceCreateDeviceRGB();
+    Image = CGImageCreate(
+        Width,
+        Height,
+        8,      // bits per component
+        32,     // bits per pixel
+        Width * 4,  // bytes per row
+        colorspace,
+        kCGBitmapByteOrder32Big,  // bitmap info
+        provider,
+        NULL,   // decode array
+        true,   // should interpolate
+        kCGRenderingIntentDefault   // rendering intent
+    );
 
-    // CGColorSpaceRelease(colorspace);
+    CGColorSpaceRelease(colorspace);
+    // CGDataProviderRelease(provider);
 
-    // context = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
-    // CGContextDrawImage(context, self.bounds, image);
+    CGContextRef context = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
+    CGContextDrawImage(context, self.bounds, Image);
 
-    // [self display];
+    [self display];
 }
 
 - (void) mouseUp: (NSEvent *) event
