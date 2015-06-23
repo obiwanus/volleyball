@@ -1,12 +1,18 @@
 #include <windows.h>
 #include <stdint.h>
+#include <intrin.h>
+#include <stdio.h>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
+typedef uint64_t u64;
 typedef int8_t i8;
 typedef int16_t i16;
 typedef int32_t i32;
+typedef int64_t i64;
+typedef float r32;
+typedef double r64;
 
 #define internal static
 #define global static
@@ -26,6 +32,7 @@ struct win32_offscreen_buffer
 global bool GlobalRunning;
 
 global win32_offscreen_buffer GlobalOffscreenBuffer;
+global LARGE_INTEGER GlobalPerformanceFrequency;
 
 
 internal void
@@ -83,6 +90,26 @@ Win32ResizeDIBSection(int Width, int Height)
 
     int BitmapMemorySize = (Width * Height) * GlobalOffscreenBuffer.BytesPerPixel;
     GlobalOffscreenBuffer.Memory = VirtualAlloc(0, BitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
+}
+
+
+inline LARGE_INTEGER 
+Win32GetWallClock()
+{
+    LARGE_INTEGER Result;
+    QueryPerformanceCounter(&Result);
+
+    return Result;
+}
+
+
+inline r32
+Win32GetMillisecondsElapsed(LARGE_INTEGER Start, LARGE_INTEGER End)
+{
+    r32 Result = 1000.0f * (r32) (End.QuadPart - Start.QuadPart) / 
+                 (r32) GlobalPerformanceFrequency.QuadPart;
+
+    return Result;
 }
 
 
@@ -148,6 +175,29 @@ WinMain(HINSTANCE hInstance,
     WindowClass.hInstance = hInstance;
     WindowClass.lpszClassName = "VolleyballWindowClass";
 
+    // TODO: query monitor refresh rate
+    int TargetFPS = 60;
+    r32 TargetMSPF = 1000.0f / (r32)TargetFPS;  // Target ms per frame
+
+    // Set target sleep resolution
+    {
+        #define TARGET_SLEEP_RESOLUTION 1   // 1-millisecond target resolution
+
+        TIMECAPS tc;
+        UINT     wTimerRes;
+
+        if (timeGetDevCaps(&tc, sizeof(TIMECAPS)) != TIMERR_NOERROR) 
+        {
+            OutputDebugStringA("Cannot set the sleep resolution\n");
+            exit(1);
+        }
+
+        wTimerRes = min(max(tc.wPeriodMin, TARGET_SLEEP_RESOLUTION), tc.wPeriodMax);
+        timeBeginPeriod(wTimerRes);
+    }
+    
+    QueryPerformanceFrequency(&GlobalPerformanceFrequency); 
+
     if (RegisterClass(&WindowClass))
     {
         HWND Window = CreateWindow(
@@ -169,6 +219,9 @@ WinMain(HINSTANCE hInstance,
             int XOffset = 0;
             int YOffset = 0;
 
+            LARGE_INTEGER LastTimestamp = Win32GetWallClock();
+
+            // Main loop
             while (GlobalRunning)
             {
                 MSG Message;
@@ -182,6 +235,45 @@ WinMain(HINSTANCE hInstance,
                 HDC hdc = GetDC(Window);
                 Win32UpdateWindow(hdc);
                 ReleaseDC(Window, hdc);
+
+                // Enforce FPS
+                {
+                    r32 MillisecondsElapsed = Win32GetMillisecondsElapsed(LastTimestamp, Win32GetWallClock());
+                    u32 TimeToSleep = 0;
+
+                    if (MillisecondsElapsed < TargetMSPF)
+                    {
+                        TimeToSleep = (u32)(TargetMSPF - MillisecondsElapsed);
+                        Sleep(TimeToSleep);
+
+                        while (MillisecondsElapsed < TargetMSPF)
+                        {
+                            MillisecondsElapsed = Win32GetMillisecondsElapsed(LastTimestamp, Win32GetWallClock());
+                        }
+                    }
+                    else
+                    {
+                        OutputDebugStringA("Frame missed\n");
+                    }
+
+                    LastTimestamp = Win32GetWallClock();
+                    char String[300];
+                    sprintf_s(String, "Time to sleep: %d, Target MSPF: %.2f, Milliseconds elapsed: %.2f\n", TimeToSleep, TargetMSPF, MillisecondsElapsed);
+                    OutputDebugStringA(String);
+
+                    // if (ElapsedMicroseconds.QuadPart < TargetMSPF * 1000)
+                    // {
+                    //     u32 TimeToSleep = (u32)(TargetMSPF - ElapsedMicroseconds.QuadPart / 1000) ;
+                    //     // char String[300];
+                    //     // sprintf_s(String, "Time to sleep: %d, Target MSPF: %d, Elapsed microseconds: %ld", TimeToSleep, TargetMSPF, ElapsedMicroseconds.QuadPart);
+                    //     // OutputDebugStringA(String);
+                    //     Sleep(TimeToSleep);
+                    // }
+                    // else
+                    // {
+                    //     OutputDebugStringA("Frame missed\n");
+                    // }
+                }
             }
         }
     }
