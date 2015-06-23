@@ -213,6 +213,9 @@ WinMain(HINSTANCE hInstance,
             hInstance,
             0);
 
+        // We're not going to release it as we use CS_OWNDC
+        HDC hdc = GetDC(Window);
+
         if (Window)
         {
             GlobalRunning = true;
@@ -232,11 +235,12 @@ WinMain(HINSTANCE hInstance,
                 }
 
                 Win32DrawGradient(XOffset++, YOffset++);
-                HDC hdc = GetDC(Window);
                 Win32UpdateWindow(hdc);
-                ReleaseDC(Window, hdc);
 
                 // Enforce FPS
+                // TODO: for some reason Time to sleep drops every now and again,
+                // disabling gradient solves or masks this, though I don't see
+                // any reason why this might happen
                 {
                     r32 MillisecondsElapsed = Win32GetMillisecondsElapsed(LastTimestamp, Win32GetWallClock());
                     u32 TimeToSleep = 0;
@@ -260,19 +264,6 @@ WinMain(HINSTANCE hInstance,
                     char String[300];
                     sprintf_s(String, "Time to sleep: %d, Target MSPF: %.2f, Milliseconds elapsed: %.2f\n", TimeToSleep, TargetMSPF, MillisecondsElapsed);
                     OutputDebugStringA(String);
-
-                    // if (ElapsedMicroseconds.QuadPart < TargetMSPF * 1000)
-                    // {
-                    //     u32 TimeToSleep = (u32)(TargetMSPF - ElapsedMicroseconds.QuadPart / 1000) ;
-                    //     // char String[300];
-                    //     // sprintf_s(String, "Time to sleep: %d, Target MSPF: %d, Elapsed microseconds: %ld", TimeToSleep, TargetMSPF, ElapsedMicroseconds.QuadPart);
-                    //     // OutputDebugStringA(String);
-                    //     Sleep(TimeToSleep);
-                    // }
-                    // else
-                    // {
-                    //     OutputDebugStringA("Frame missed\n");
-                    // }
                 }
             }
         }
