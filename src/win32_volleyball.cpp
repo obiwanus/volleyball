@@ -44,20 +44,23 @@ global LARGE_INTEGER GlobalPerformanceFrequency;
 
 
 internal void
-Win32DrawGradient(int XOffset, int YOffset)
+Win32DrawSquare(u32 X, u32 Y, u32 Width, u32 Height, u32 Color)
 {
-    u8 *Row = (u8 *) GlobalOffscreenBuffer.Memory;
+    // No boundaries checking
+
     int Pitch = GlobalOffscreenBuffer.Width * GlobalOffscreenBuffer.BytesPerPixel;
+    u8 *Row = (u8 *) GlobalOffscreenBuffer.Memory + Pitch * Y + X * GlobalOffscreenBuffer.BytesPerPixel;
     
-    for (int Y = 0; Y < GlobalOffscreenBuffer.Height; Y++)
+    for (u32 pY = Y; pY < Y + Height; pY++)
     {
         u32 *Pixel = (u32 *) Row;
-        for (int X = 0; X < GlobalOffscreenBuffer.Width; X++)
+        for (u32 pX = X; pX < X + Width; pX++)
         {
-            u8 Red = (u8) (X + XOffset);
-            u8 Green = (u8) (Y + YOffset);
-            u8 Blue = 0;
-            *Pixel++ = Red << 16 | Green << 8 | Blue;
+            *Pixel++ = Color;
+            // u8 Red = 0xFF;
+            // u8 Green = 0xFF;
+            // u8 Blue = 0;
+            // *Pixel++ = Red << 16 | Green << 8 | Blue;
         }
         Row += Pitch;
     }
@@ -285,8 +288,13 @@ WinMain(HINSTANCE hInstance,
         if (Window)
         {
             GlobalRunning = true;
-            int XOffset = 0;
-            int YOffset = 0;
+
+            // TMP: square
+            i32 X = 100, Y = 100;
+            i32 XDirection = 3, YDirection = 3;
+            i32 Width = 50, Height = 50;
+            i32 MaxX = GlobalOffscreenBuffer.Width - Width;
+            i32 MaxY = GlobalOffscreenBuffer.Height - Height;
 
             LARGE_INTEGER LastTimestamp = Win32GetWallClock();
 
@@ -295,10 +303,21 @@ WinMain(HINSTANCE hInstance,
             {
                 Win32ProcessPendingMessages();
 
-                u64 tsc1 = __rdtsc();
-                Win32DrawGradient(XOffset++, YOffset++);
-                u64 tsc2 = __rdtsc();
+                // Move and draw square
+                {
+                    Win32DrawSquare(X, Y, Width, Height, 0x00000000);  // erase
 
+                    X += XDirection;
+                    Y += YDirection;
+
+                    if (X <= 0) { X = 0; XDirection = -XDirection; }
+                    if (Y <= 0) { Y = 0; YDirection = -YDirection; }
+                    if (X > MaxX) { X = MaxX; XDirection = -XDirection; }
+                    if (Y > MaxY) { Y = MaxY; YDirection = -YDirection; }
+
+                    Win32DrawSquare(X, Y, Width, Height, 0x00FFFF00);
+                }
+                
                 Win32UpdateWindow(hdc);
 
                 // Enforce FPS
@@ -329,7 +348,7 @@ WinMain(HINSTANCE hInstance,
                     if (TimeToSleep)
                     {
                         char String[300];
-                        sprintf_s(String, "Time to sleep: %d, Ms elapsed: %.2f, drawing: %ld, < 10 = %d\n", TimeToSleep, MillisecondsElapsed, tsc2 - tsc1, TimeToSleep < 10);
+                        sprintf_s(String, "Time to sleep: %d, Ms elapsed: %.2f, < 10 = %d\n", TimeToSleep, MillisecondsElapsed, TimeToSleep < 10);
                         OutputDebugStringA(String);
                     }
                 }
