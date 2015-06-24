@@ -2,7 +2,7 @@
 
 pushd w:\volleyball
 
-set CommonCompilerFlags= -MTd -nologo -Gm- -GR- -EHa- -Od -Oi -WX -W4 -wd4201 -wd4100 -wd4189 -wd4505 -wd4706 -DVOLLEYBALL_INTERNAL=1 -DVOLLEYBALL_SLOW=1 -DVOLLEYBALL_WIN32=1 -FC -Z7 -Fm
+set CommonCompilerFlags= -MTd -nologo -Gm- -GR- -EHa- -Od -Oi -WX -W4 -wd4201 -wd4100 -wd4189 -wd4505 -wd4706 -DBUILD_INTERNAL=1 -DBUILD_SLOW=1 -DBUILD_WIN32=1 -FC -Z7 -Fm
 set CommonLinkerFlags= -incremental:no -opt:ref winmm.lib user32.lib gdi32.lib
 
 if not defined DevEnvDir (

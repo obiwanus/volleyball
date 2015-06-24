@@ -13,10 +13,18 @@ typedef int32_t i32;
 typedef int64_t i64;
 typedef float r32;
 typedef double r64;
+typedef i32 bool32;
 
 #define internal static
 #define global static
 #define local_persist static
+
+
+#if BUILD_SLOW
+#define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}
+#else
+#define Assert(Expression)
+#endif
 
 
 struct win32_offscreen_buffer
@@ -149,8 +157,18 @@ Win32WindowProc(
                 // Paint.rcPaint.right - Paint.rcPaint.left,
                 // Paint.rcPaint.bottom - Paint.rcPaint.top
             );
+
+            OutputDebugStringA("WM_PAINT\n");
             
             EndPaint(hwnd, &Paint);
+        } break;
+
+        case WM_SYSKEYDOWN:
+        case WM_SYSKEYUP:
+        case WM_KEYDOWN:
+        case WM_KEYUP:
+        {
+            Assert(!"Keyboard input came in through a non-dispatch message!");
         } break;
 
         default:
@@ -160,6 +178,54 @@ Win32WindowProc(
     }
 
     return Result;
+}
+
+
+internal void
+Win32ProcessPendingMessages()
+{
+    MSG Message;
+    while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
+    {
+        // Get keyboard messages
+        switch(Message.message)
+        {
+            case WM_QUIT:
+            {
+                GlobalRunning = false;
+            } break;
+
+            case WM_SYSKEYDOWN:
+            case WM_SYSKEYUP:
+            case WM_KEYDOWN:
+            case WM_KEYUP:
+            {
+                u32 VKCode = (u32)Message.wParam;
+                bool32 WasDown = ((Message.lParam & (1 << 30)) != 0);
+                bool32 IsDown = ((Message.lParam & (1 << 31)) == 0);
+                if(WasDown != IsDown)
+                {
+                    // TODO:
+                    // if(VKCode == 'W')
+                    // {
+                    //     Win32ProcessKeyboardMessage(&KeyboardController->MoveUp, IsDown);
+                    // }
+                }
+
+                bool32 AltKeyWasDown = (Message.lParam & (1 << 29));
+                if((VKCode == VK_F4) && AltKeyWasDown)
+                {
+                    GlobalRunning = false;
+                }
+            } break;
+
+            default:
+            {
+                TranslateMessage(&Message);
+                DispatchMessageA(&Message);
+            } break;
+        }
+    }
 }
 
 
@@ -227,14 +293,12 @@ WinMain(HINSTANCE hInstance,
             // Main loop
             while (GlobalRunning)
             {
-                MSG Message;
-                while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
-                {
-                    TranslateMessage(&Message);
-                    DispatchMessageA(&Message);
-                }
+                Win32ProcessPendingMessages();
 
+                u64 tsc1 = __rdtsc();
                 Win32DrawGradient(XOffset++, YOffset++);
+                u64 tsc2 = __rdtsc();
+
                 Win32UpdateWindow(hdc);
 
                 // Enforce FPS
@@ -261,9 +325,13 @@ WinMain(HINSTANCE hInstance,
                     }
 
                     LastTimestamp = Win32GetWallClock();
-                    char String[300];
-                    sprintf_s(String, "Time to sleep: %d, Target MSPF: %.2f, Milliseconds elapsed: %.2f\n", TimeToSleep, TargetMSPF, MillisecondsElapsed);
-                    OutputDebugStringA(String);
+
+                    if (TimeToSleep)
+                    {
+                        char String[300];
+                        sprintf_s(String, "Time to sleep: %d, Ms elapsed: %.2f, drawing: %ld, < 10 = %d\n", TimeToSleep, MillisecondsElapsed, tsc2 - tsc1, TimeToSleep < 10);
+                        OutputDebugStringA(String);
+                    }
                 }
             }
         }
