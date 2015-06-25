@@ -1,45 +1,14 @@
+#include "volleyball.h"
+#include "volleyball.cpp"
+
 #include <windows.h>
-#include <stdint.h>
 #include <intrin.h>
-#include <stdio.h>
 
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef int8_t i8;
-typedef int16_t i16;
-typedef int32_t i32;
-typedef int64_t i64;
-typedef float r32;
-typedef double r64;
-typedef i32 bool32;
-
-#define internal static
-#define global static
-#define local_persist static
-
-
-#if BUILD_SLOW
-#define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}
-#else
-#define Assert(Expression)
-#endif
-
-
-struct win32_offscreen_buffer
-{
-    BITMAPINFO Info;
-    void *Memory;
-    int Width;
-    int Height;
-    int BytesPerPixel;
-};
-
+#include "win32_volleyball.h"
 
 global bool GlobalRunning;
 
-global win32_offscreen_buffer GlobalOffscreenBuffer;
+global BITMAPINFO GlobalBitmapInfo;
 global LARGE_INTEGER GlobalPerformanceFrequency;
 
 
@@ -48,22 +17,22 @@ Win32DrawSquare(u32 X, u32 Y, u32 Width, u32 Height, u32 Color)
 {
     // No boundaries checking
 
-    int Pitch = GlobalOffscreenBuffer.Width * GlobalOffscreenBuffer.BytesPerPixel;
-    u8 *Row = (u8 *) GlobalOffscreenBuffer.Memory + Pitch * Y + X * GlobalOffscreenBuffer.BytesPerPixel;
+    // int Pitch = GlobalWin32BackBuffer.Width * GlobalWin32BackBuffer.BytesPerPixel;
+    // u8 *Row = (u8 *) GlobalWin32BackBuffer.Memory + Pitch * Y + X * GlobalWin32BackBuffer.BytesPerPixel;
     
-    for (u32 pY = Y; pY < Y + Height; pY++)
-    {
-        u32 *Pixel = (u32 *) Row;
-        for (u32 pX = X; pX < X + Width; pX++)
-        {
-            *Pixel++ = Color;
-            // u8 Red = 0xFF;
-            // u8 Green = 0xFF;
-            // u8 Blue = 0;
-            // *Pixel++ = Red << 16 | Green << 8 | Blue;
-        }
-        Row += Pitch;
-    }
+    // for (u32 pY = Y; pY < Y + Height; pY++)
+    // {
+    //     u32 *Pixel = (u32 *) Row;
+    //     for (u32 pX = X; pX < X + Width; pX++)
+    //     {
+    //         *Pixel++ = Color;
+    //         // u8 Red = 0xFF;
+    //         // u8 Green = 0xFF;
+    //         // u8 Blue = 0;
+    //         // *Pixel++ = Red << 16 | Green << 8 | Blue;
+    //     }
+    //     Row += Pitch;
+    // }
 }
 
 
@@ -72,10 +41,10 @@ Win32UpdateWindow(HDC hdc)
 {
     StretchDIBits(
         hdc,
-        0, 0, GlobalOffscreenBuffer.Width, GlobalOffscreenBuffer.Height,  // dest
-        0, 0, GlobalOffscreenBuffer.Width, GlobalOffscreenBuffer.Height,  // src
-        GlobalOffscreenBuffer.Memory,
-        &GlobalOffscreenBuffer.Info,
+        0, 0, GameBackBuffer.Width, GameBackBuffer.Height,  // dest
+        0, 0, GameBackBuffer.Width, GameBackBuffer.Height,  // src
+        GameBackBuffer.Memory,
+        &GlobalBitmapInfo,
         DIB_RGB_COLORS, SRCCOPY);
 }
 
@@ -83,24 +52,23 @@ Win32UpdateWindow(HDC hdc)
 internal void
 Win32ResizeDIBSection(int Width, int Height)
 {
-    if (GlobalOffscreenBuffer.Memory)
+    if (!GameMemory.IsInitialized)
+        return;  // no buffer yet
+
+    if (Width > GameBackBuffer.MaxWidth)
     {
-        VirtualFree(GlobalOffscreenBuffer.Memory, 0, MEM_RELEASE);
+        Width = GameBackBuffer.MaxWidth;
+    }
+    if (Height > GameBackBuffer.MaxHeight)
+    {
+        Height = GameBackBuffer.MaxHeight;
     }
 
-    GlobalOffscreenBuffer.Width = Width;
-    GlobalOffscreenBuffer.Height = Height;
-    GlobalOffscreenBuffer.BytesPerPixel = 4;
+    GameBackBuffer.Width = Width;
+    GameBackBuffer.Height = Height;
 
-    GlobalOffscreenBuffer.Info.bmiHeader.biSize = sizeof(GlobalOffscreenBuffer.Info.bmiHeader);
-    GlobalOffscreenBuffer.Info.bmiHeader.biWidth = Width;
-    GlobalOffscreenBuffer.Info.bmiHeader.biHeight = -Height;
-    GlobalOffscreenBuffer.Info.bmiHeader.biPlanes = 1;
-    GlobalOffscreenBuffer.Info.bmiHeader.biBitCount = 32;
-    GlobalOffscreenBuffer.Info.bmiHeader.biCompression = BI_RGB;
-
-    int BitmapMemorySize = (Width * Height) * GlobalOffscreenBuffer.BytesPerPixel;
-    GlobalOffscreenBuffer.Memory = VirtualAlloc(0, BitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
+    GlobalBitmapInfo.bmiHeader.biWidth = Width;
+    GlobalBitmapInfo.bmiHeader.biHeight = -Height;
 }
 
 
@@ -269,6 +237,9 @@ WinMain(HINSTANCE hInstance,
 
     if (RegisterClass(&WindowClass))
     {
+        int WindowWidth = 1024;
+        int WindowHeight = 768;
+
         HWND Window = CreateWindow(
             WindowClass.lpszClassName,
             0,
@@ -289,35 +260,44 @@ WinMain(HINSTANCE hInstance,
         {
             GlobalRunning = true;
 
-            // TMP: square
-            i32 X = 100, Y = 100;
-            i32 XDirection = 3, YDirection = 3;
-            i32 Width = 50, Height = 50;
-            i32 MaxX = GlobalOffscreenBuffer.Width - Width;
-            i32 MaxY = GlobalOffscreenBuffer.Height - Height;
-
             LARGE_INTEGER LastTimestamp = Win32GetWallClock();
+
+            // Init game memory
+            if (!GameMemory.IsInitialized) 
+            {
+                GameMemory.MemorySize = 1024 * 1024 * 1024;  // 1 Gigabyte
+                GameMemory.Start = VirtualAlloc(0, GameMemory.MemorySize, MEM_COMMIT, PAGE_READWRITE);
+                GameMemory.Free = GameMemory.Start;
+            }
+
+            // Init backbuffer
+            {
+                GameBackBuffer.MaxWidth = 2000;
+                GameBackBuffer.MaxHeight = 1500;
+                GameBackBuffer.Width = WindowWidth;
+                GameBackBuffer.Height = WindowHeight;
+                GameBackBuffer.BytesPerPixel = 4;
+                GameBackBuffer.Memory = GameMemory.Free;
+                GameMemory.Free = (void *)((u8 *)GameMemory.Free + 
+                                  GameBackBuffer.MaxWidth * GameBackBuffer.MaxHeight 
+                                  * GameBackBuffer.BytesPerPixel);
+                
+                GlobalBitmapInfo.bmiHeader.biSize = sizeof(GlobalBitmapInfo.bmiHeader);
+                GlobalBitmapInfo.bmiHeader.biWidth = WindowWidth;
+                GlobalBitmapInfo.bmiHeader.biHeight = -WindowHeight;
+                GlobalBitmapInfo.bmiHeader.biPlanes = 1;
+                GlobalBitmapInfo.bmiHeader.biBitCount = 32;
+                GlobalBitmapInfo.bmiHeader.biCompression = BI_RGB;
+            }
 
             // Main loop
             while (GlobalRunning)
             {
+                // Collect input
                 Win32ProcessPendingMessages();
 
-                // Move and draw square
-                {
-                    Win32DrawSquare(X, Y, Width, Height, 0x00000000);  // erase
+                GameUpdateAndRender();
 
-                    X += XDirection;
-                    Y += YDirection;
-
-                    if (X <= 0) { X = 0; XDirection = -XDirection; }
-                    if (Y <= 0) { Y = 0; YDirection = -YDirection; }
-                    if (X > MaxX) { X = MaxX; XDirection = -XDirection; }
-                    if (Y > MaxY) { Y = MaxY; YDirection = -YDirection; }
-
-                    Win32DrawSquare(X, Y, Width, Height, 0x00FFFF00);
-                }
-                
                 Win32UpdateWindow(hdc);
 
                 // Enforce FPS
@@ -345,12 +325,12 @@ WinMain(HINSTANCE hInstance,
 
                     LastTimestamp = Win32GetWallClock();
 
-                    if (TimeToSleep)
-                    {
-                        char String[300];
-                        sprintf_s(String, "Time to sleep: %d, Ms elapsed: %.2f, < 10 = %d\n", TimeToSleep, MillisecondsElapsed, TimeToSleep < 10);
-                        OutputDebugStringA(String);
-                    }
+                    // if (TimeToSleep)
+                    // {
+                    //     char String[300];
+                    //     sprintf_s(String, "Time to sleep: %d, Ms elapsed: %.2f, < 10 = %d\n", TimeToSleep, MillisecondsElapsed, TimeToSleep < 10);
+                    //     OutputDebugStringA(String);
+                    // }
                 }
             }
         }
