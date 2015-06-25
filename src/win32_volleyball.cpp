@@ -277,10 +277,10 @@ WinMain(HINSTANCE hInstance,
                 GameBackBuffer.Width = WindowWidth;
                 GameBackBuffer.Height = WindowHeight;
                 GameBackBuffer.BytesPerPixel = 4;
-                GameBackBuffer.Memory = GameMemory.Free;
-                GameMemory.Free = (void *)((u8 *)GameMemory.Free + 
-                                  GameBackBuffer.MaxWidth * GameBackBuffer.MaxHeight 
-                                  * GameBackBuffer.BytesPerPixel);
+
+                int BufferSize = GameBackBuffer.MaxWidth * GameBackBuffer.MaxHeight 
+                                  * GameBackBuffer.BytesPerPixel;
+                GameBackBuffer.Memory = GameMemoryAlloc(BufferSize);                                  
                 
                 GlobalBitmapInfo.bmiHeader.biSize = sizeof(GlobalBitmapInfo.bmiHeader);
                 GlobalBitmapInfo.bmiHeader.biWidth = WindowWidth;
