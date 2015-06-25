@@ -24,16 +24,16 @@ typedef i32 bool32;
 #endif
 
 
-typedef struct
+struct game_memory
 {
     int MemorySize;
     bool32 IsInitialized;
     void *Start;
     void *Free;
-} game_memory;
+};
 
 
-typedef struct
+struct game_offscreen_buffer
 {
     void *Memory;
     int Width;
@@ -41,4 +41,19 @@ typedef struct
     int BytesPerPixel;
     int MaxWidth;   // We'll only allocate this much
     int MaxHeight;
-} game_offscreen_buffer;
+};
+
+
+struct debug_square
+{
+    int X;
+    int Y;
+    int Width;
+    int MinWidth;
+    int MaxWidth;
+    int DirX;
+    int DirY;
+    int DirWidth;
+    u32 Color;
+};
+

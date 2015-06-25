@@ -13,30 +13,6 @@ global LARGE_INTEGER GlobalPerformanceFrequency;
 
 
 internal void
-Win32DrawSquare(u32 X, u32 Y, u32 Width, u32 Height, u32 Color)
-{
-    // No boundaries checking
-
-    // int Pitch = GlobalWin32BackBuffer.Width * GlobalWin32BackBuffer.BytesPerPixel;
-    // u8 *Row = (u8 *) GlobalWin32BackBuffer.Memory + Pitch * Y + X * GlobalWin32BackBuffer.BytesPerPixel;
-    
-    // for (u32 pY = Y; pY < Y + Height; pY++)
-    // {
-    //     u32 *Pixel = (u32 *) Row;
-    //     for (u32 pX = X; pX < X + Width; pX++)
-    //     {
-    //         *Pixel++ = Color;
-    //         // u8 Red = 0xFF;
-    //         // u8 Green = 0xFF;
-    //         // u8 Blue = 0;
-    //         // *Pixel++ = Red << 16 | Green << 8 | Blue;
-    //     }
-    //     Row += Pitch;
-    // }
-}
-
-
-internal void
 Win32UpdateWindow(HDC hdc)
 {
     StretchDIBits(
@@ -263,7 +239,6 @@ WinMain(HINSTANCE hInstance,
             LARGE_INTEGER LastTimestamp = Win32GetWallClock();
 
             // Init game memory
-            if (!GameMemory.IsInitialized) 
             {
                 GameMemory.MemorySize = 1024 * 1024 * 1024;  // 1 Gigabyte
                 GameMemory.Start = VirtualAlloc(0, GameMemory.MemorySize, MEM_COMMIT, PAGE_READWRITE);

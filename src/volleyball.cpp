@@ -2,6 +2,8 @@
 global game_memory GameMemory;
 global game_offscreen_buffer GameBackBuffer;
 
+global debug_square *DebugSquare;
+
 
 internal void *
 GameMemoryAlloc(int SizeInBytes)
@@ -10,30 +12,29 @@ GameMemoryAlloc(int SizeInBytes)
 
     GameMemory.Free = (void *)((u8 *)GameMemory.Free + SizeInBytes);
     i64 CurrentSize = ((u8 *)GameMemory.Free - (u8 *) GameMemory.Start);
-    if (CurrentSize >= GameMemory.MemorySize)
-    {
-        return 0;  // not enough memory
-    }
+    Assert(CurrentSize < GameMemory.MemorySize);
 
     return Result;
 }
 
 
 internal void
-GameUpdateAndRender()
+DEBUGDrawRectangle(debug_square *Square, u32 Color)
 {
-    u32 X = 0, Y = 0;
-    u32 Width = 400, Height = 300;
+    int X = Square->X; 
+    int Y = Square->Y;
+    int Width = Square->Width;
+    int Height = Square->Width;
 
-    u32 Pitch = GameBackBuffer.Width * GameBackBuffer.BytesPerPixel;
+    int Pitch = GameBackBuffer.Width * GameBackBuffer.BytesPerPixel;
     u8 *Row = (u8 *) GameBackBuffer.Memory + Pitch * Y + X * GameBackBuffer.BytesPerPixel;
     
-    for (u32 pY = Y; pY < Y + Height; pY++)
+    for (int pY = Y; pY < Y + Height; pY++)
     {
-        u32 *Pixel = (u32 *) Row;
-        for (u32 pX = X; pX < X + Width; pX++)
+        int *Pixel = (int *) Row;
+        for (int pX = X; pX < X + Width; pX++)
         {
-            *Pixel++ = 0x00FF00FF;
+            *Pixel++ = Color;
             // u8 Red = 0xFF;
             // u8 Green = 0xFF;
             // u8 Blue = 0;
@@ -41,26 +42,59 @@ GameUpdateAndRender()
         }
         Row += Pitch;
     }
+}
 
-    // // TMP: square
-    // i32 X = 100, Y = 100;
-    // i32 XDirection = 3, YDirection = 3;
-    // i32 Width = 50, Height = 50;
-    // i32 MaxX = GlobalWin32BackBuffer.Width - Width;
-    // i32 MaxY = GlobalWin32BackBuffer.Height - Height;
 
-    // // Move and draw square
-    // {
-    //     Win32DrawSquare(X, Y, Width, Height, 0x00000000);  // erase
+internal void
+GameUpdateAndRender()
+{
+    if (!GameMemory.IsInitialized)
+    {
+        DebugSquare = (debug_square *)GameMemoryAlloc(sizeof(debug_square));
+        DebugSquare->X = 100; 
+        DebugSquare->Y = 100;
+        DebugSquare->DirX = 3;
+        DebugSquare->DirY = 3;
+        DebugSquare->Width = 50;
+        DebugSquare->MinWidth = 10;
+        DebugSquare->MaxWidth = 150;
+        DebugSquare->DirWidth = -2;
+        DebugSquare->Color = 0x0000FFFF;
 
-    //     X += XDirection;
-    //     Y += YDirection;
+        GameMemory.IsInitialized = true;
+    }
 
-    //     if (X <= 0) { X = 0; XDirection = -XDirection; }
-    //     if (Y <= 0) { Y = 0; YDirection = -YDirection; }
-    //     if (X > MaxX) { X = MaxX; XDirection = -XDirection; }
-    //     if (Y > MaxY) { Y = MaxY; YDirection = -YDirection; }
+    // Move and draw square
+    {
+        DEBUGDrawRectangle(DebugSquare, 0x00000000);  // erase
 
-    //     Win32DrawSquare(X, Y, Width, Height, 0x00FFFF00);
-    // }
+        DebugSquare->X += DebugSquare->DirX;
+        DebugSquare->Y += DebugSquare->DirY;
+        DebugSquare->Width += DebugSquare->DirWidth;
+
+        int MaxX = GameBackBuffer.Width - DebugSquare->Width;
+        int MaxY = GameBackBuffer.Height - DebugSquare->Width;
+
+        if (DebugSquare->X <= 0) { DebugSquare->X = 0; DebugSquare->DirX = -DebugSquare->DirX; }
+        if (DebugSquare->Y <= 0) { DebugSquare->Y = 0; DebugSquare->DirY = -DebugSquare->DirY; }
+        if (DebugSquare->X > MaxX) { DebugSquare->X = MaxX; DebugSquare->DirX = -DebugSquare->DirX; }
+        if (DebugSquare->Y > MaxY) { DebugSquare->Y = MaxY; DebugSquare->DirY = -DebugSquare->DirY; }
+        if (DebugSquare->Width > DebugSquare->MaxWidth) 
+        { 
+            DebugSquare->Width = DebugSquare->MaxWidth; 
+            DebugSquare->DirWidth = -DebugSquare->DirWidth; 
+        }
+        if (DebugSquare->Width <= DebugSquare->MinWidth) 
+        { 
+            DebugSquare->Width = DebugSquare->MinWidth; 
+            DebugSquare->DirWidth = -DebugSquare->DirWidth; 
+        }
+
+        u8 Red = (u8) DebugSquare->X;
+        u8 Green = (u8) DebugSquare->Y;
+        u8 Blue = (u8) DebugSquare->Width;
+        DebugSquare->Color = Red << 16 | Green << 8 | Blue;
+
+        DEBUGDrawRectangle(DebugSquare, DebugSquare->Color);
+    }
 }
