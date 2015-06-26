@@ -26,10 +26,15 @@ Win32UpdateWindow(HDC hdc)
 
 
 internal void
-Win32ResizeDIBSection(int Width, int Height)
+Win32ResizeClientWindow(HWND Window)
 {
     if (!GameMemory.IsInitialized)
         return;  // no buffer yet
+
+    RECT ClientRect;
+    GetClientRect(Window, &ClientRect);
+    int Width = ClientRect.right - ClientRect.left;
+    int Height = ClientRect.bottom - ClientRect.top;
 
     if (Width > GameBackBuffer.MaxWidth)
     {
@@ -81,11 +86,7 @@ Win32WindowProc(
     {
         case WM_SIZE:
         {
-            RECT ClientRect;
-            GetClientRect(hwnd, &ClientRect);
-            int Width = ClientRect.right - ClientRect.left;
-            int Height = ClientRect.bottom - ClientRect.top;
-            Win32ResizeDIBSection(Width, Height);
+            Win32ResizeClientWindow(hwnd);
         } break;
 
         case WM_CLOSE:
@@ -222,8 +223,8 @@ WinMain(HINSTANCE hInstance,
             WS_OVERLAPPEDWINDOW|WS_VISIBLE,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
-            1024,
-            768,
+            WindowWidth,
+            WindowHeight,
             0,
             0,
             hInstance,
@@ -243,14 +244,13 @@ WinMain(HINSTANCE hInstance,
                 GameMemory.MemorySize = 1024 * 1024 * 1024;  // 1 Gigabyte
                 GameMemory.Start = VirtualAlloc(0, GameMemory.MemorySize, MEM_COMMIT, PAGE_READWRITE);
                 GameMemory.Free = GameMemory.Start;
+                GameMemory.IsInitialized = true;
             }
 
             // Init backbuffer
             {
                 GameBackBuffer.MaxWidth = 2000;
                 GameBackBuffer.MaxHeight = 1500;
-                GameBackBuffer.Width = WindowWidth;
-                GameBackBuffer.Height = WindowHeight;
                 GameBackBuffer.BytesPerPixel = 4;
 
                 int BufferSize = GameBackBuffer.MaxWidth * GameBackBuffer.MaxHeight 
@@ -258,11 +258,12 @@ WinMain(HINSTANCE hInstance,
                 GameBackBuffer.Memory = GameMemoryAlloc(BufferSize);                                  
                 
                 GlobalBitmapInfo.bmiHeader.biSize = sizeof(GlobalBitmapInfo.bmiHeader);
-                GlobalBitmapInfo.bmiHeader.biWidth = WindowWidth;
-                GlobalBitmapInfo.bmiHeader.biHeight = -WindowHeight;
                 GlobalBitmapInfo.bmiHeader.biPlanes = 1;
                 GlobalBitmapInfo.bmiHeader.biBitCount = 32;
                 GlobalBitmapInfo.bmiHeader.biCompression = BI_RGB;
+
+                // Set up proper values of buffers based on actual client size
+                Win32ResizeClientWindow(Window);
             }
 
             // Main loop

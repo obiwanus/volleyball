@@ -48,7 +48,7 @@ DEBUGDrawRectangle(debug_square *Square, u32 Color)
 internal void
 GameUpdateAndRender()
 {
-    if (!GameMemory.IsInitialized)
+    if (!DebugSquare)
     {
         DebugSquare = (debug_square *)GameMemoryAlloc(sizeof(debug_square));
         DebugSquare->X = 100; 
