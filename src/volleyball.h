@@ -57,3 +57,20 @@ struct debug_square
     u32 Color;
 };
 
+
+struct game_button_state
+{
+    int HalfTransitionCount;
+    bool32 EndedDown;
+};
+
+
+struct game_input
+{
+    game_button_state Up;
+    game_button_state Down;
+    game_button_state Left;
+    game_button_state Right;
+};
+
+

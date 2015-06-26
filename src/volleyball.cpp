@@ -63,7 +63,7 @@ DEBUGDrawRectangle(debug_square *Square, u32 Color)
 
 
 internal void
-GameUpdateAndRender()
+GameUpdateAndRender(game_input *NewInput)
 {
     if (!DebugSquare)
     {
@@ -77,13 +77,30 @@ GameUpdateAndRender()
         DebugSquare->MaxWidth = 150;
         DebugSquare->DirWidth = -1;
         DebugSquare->Color = 0x0000FFFF;
-
-        GameMemory.IsInitialized = true;
     }
 
     // Move and draw square
     {
-        DEBUGDrawRectangle(DebugSquare, 0x00000000);  // erase
+        // DEBUGDrawRectangle(DebugSquare, 0x00000000);  // erase
+
+        if (NewInput->Up.EndedDown)
+            DebugSquare->DirY--;
+        if (NewInput->Down.EndedDown)
+            DebugSquare->DirY++;
+        if (NewInput->Right.EndedDown)
+            DebugSquare->DirX++;
+        if (NewInput->Left.EndedDown)
+            DebugSquare->DirX--;
+
+        if (DebugSquare->DirX > DebugSquare->MaxWidth)
+            DebugSquare->DirX = DebugSquare->MaxWidth;
+        if (DebugSquare->DirX <= -DebugSquare->MaxWidth)
+            DebugSquare->DirX = -DebugSquare->MaxWidth;
+
+        if (DebugSquare->DirY > DebugSquare->MaxWidth)
+            DebugSquare->DirY = DebugSquare->MaxWidth;
+        if (DebugSquare->DirY <= -DebugSquare->MaxWidth)
+            DebugSquare->DirY = -DebugSquare->MaxWidth;
 
         DebugSquare->X += DebugSquare->DirX;
         DebugSquare->Y += DebugSquare->DirY;

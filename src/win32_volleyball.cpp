@@ -130,7 +130,7 @@ Win32WindowProc(
 
 
 internal void
-Win32ProcessPendingMessages()
+Win32ProcessPendingMessages(game_input *NewInput)
 {
     MSG Message;
     while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
@@ -151,13 +151,31 @@ Win32ProcessPendingMessages()
                 u32 VKCode = (u32)Message.wParam;
                 bool32 WasDown = ((Message.lParam & (1 << 30)) != 0);
                 bool32 IsDown = ((Message.lParam & (1 << 31)) == 0);
-                if(WasDown != IsDown)
+
+                // Get input
                 {
-                    // TODO:
-                    // if(VKCode == 'W')
-                    // {
-                    //     Win32ProcessKeyboardMessage(&KeyboardController->MoveUp, IsDown);
-                    // }
+                    if(VKCode == 'W' || VKCode == VK_UP)
+                    {
+                        NewInput->Up.HalfTransitionCount++;
+                        NewInput->Up.EndedDown = IsDown;
+                    }
+                    else if(VKCode == 'S' || VKCode == VK_DOWN)
+                    {
+                        NewInput->Down.HalfTransitionCount++;
+                        NewInput->Down.EndedDown = IsDown;
+                    }
+                    else if(VKCode == 'A' || VKCode == VK_LEFT)
+                    {
+                        NewInput->Left.HalfTransitionCount++;
+                        NewInput->Left.EndedDown = IsDown;
+                    }
+                    else if(VKCode == 'D' || VKCode == VK_RIGHT)
+                    {
+                        NewInput->Right.HalfTransitionCount++;
+                        NewInput->Right.EndedDown = IsDown;
+                    }
+                    OutputDebugStringA("Change\n");
+
                 }
 
                 bool32 AltKeyWasDown = (Message.lParam & (1 << 29));
@@ -266,13 +284,24 @@ WinMain(HINSTANCE hInstance,
                 Win32ResizeClientWindow(Window);
             }
 
+            // Get space for inputs
+            game_input *OldInput = (game_input *) GameMemoryAlloc(sizeof(game_input));
+            game_input *NewInput = (game_input *) GameMemoryAlloc(sizeof(game_input));;
+
             // Main loop
             while (GlobalRunning)
             {
                 // Collect input
-                Win32ProcessPendingMessages();
+                Win32ProcessPendingMessages(NewInput);
 
-                GameUpdateAndRender();
+                GameUpdateAndRender(NewInput);
+
+                // Swap inputs
+                game_input *TmpInput = OldInput;
+                OldInput = NewInput;
+                NewInput = TmpInput;
+                *NewInput = {};  // zero everything
+
 
                 Win32UpdateWindow(hdc);
 
