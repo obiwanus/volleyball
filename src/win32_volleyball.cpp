@@ -1,4 +1,3 @@
-#include "volleyball.h"
 #include "volleyball.cpp"
 
 #include <windows.h>
@@ -10,6 +9,56 @@ global bool GlobalRunning;
 
 global BITMAPINFO GlobalBitmapInfo;
 global LARGE_INTEGER GlobalPerformanceFrequency;
+
+
+file_read_result
+DEBUGPlatformReadEntireFile(char *Filename)
+{
+    file_read_result Result = {};
+
+    HANDLE FileHandle = CreateFile(
+        Filename,
+        GENERIC_READ,
+        FILE_SHARE_READ,
+        0,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        0);
+
+    if (FileHandle)
+    {
+        LARGE_INTEGER FileSize;
+        if (GetFileSizeEx(FileHandle, &FileSize))
+        {
+            Result.MemorySize = FileSize.QuadPart;
+            Result.Memory = VirtualAlloc(0, Result.MemorySize, MEM_COMMIT, PAGE_READWRITE);
+            DWORD BytesRead = 0;
+
+            ReadFile(
+                FileHandle,
+                Result.Memory,
+                (u32)Result.MemorySize,
+                &BytesRead,
+                0);
+
+            return Result;
+        }
+        else
+        {
+            OutputDebugStringA("Cannot get file size\n");
+            // GetLastError() should help
+        }
+
+        CloseHandle(FileHandle);    
+    }
+    else
+    {
+        OutputDebugStringA("Cannot read from file\n");
+        // GetLastError() should help
+    }
+
+    return Result;
+}
 
 
 internal void
@@ -174,7 +223,6 @@ Win32ProcessPendingMessages(game_input *NewInput)
                         NewInput->Right.HalfTransitionCount++;
                         NewInput->Right.EndedDown = IsDown;
                     }
-                    OutputDebugStringA("Change\n");
 
                 }
 

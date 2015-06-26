@@ -74,3 +74,14 @@ struct game_input
 };
 
 
+struct file_read_result
+{
+    void *Memory;
+    u64 MemorySize;
+};
+
+
+// Platform functions
+file_read_result DEBUGPlatformReadEntireFile(char *Filename);
+void *DEBUGPlatformWriteEntireFile(char *Filename, int FileSize, void *Memory);
+

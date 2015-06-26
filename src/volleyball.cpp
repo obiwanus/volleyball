@@ -1,3 +1,4 @@
+#include "volleyball.h"
 
 global game_memory GameMemory;
 global game_offscreen_buffer GameBackBuffer;
@@ -5,7 +6,7 @@ global game_offscreen_buffer GameBackBuffer;
 global debug_square *DebugSquare;
 
 
-internal int
+inline int
 TruncateReal32(r32 Value)
 {
     int Result = (int) Value;
@@ -13,7 +14,7 @@ TruncateReal32(r32 Value)
 }
 
 
-internal int
+inline int
 RoundReal32(r32 Value)
 {
     // TODO: think about overflow
@@ -84,13 +85,13 @@ GameUpdateAndRender(game_input *NewInput)
         // DEBUGDrawRectangle(DebugSquare, 0x00000000);  // erase
 
         if (NewInput->Up.EndedDown)
-            DebugSquare->DirY--;
+            DebugSquare->DirY -= NewInput->Up.HalfTransitionCount;
         if (NewInput->Down.EndedDown)
-            DebugSquare->DirY++;
+            DebugSquare->DirY += NewInput->Down.HalfTransitionCount;
         if (NewInput->Right.EndedDown)
-            DebugSquare->DirX++;
+            DebugSquare->DirX += NewInput->Right.HalfTransitionCount;
         if (NewInput->Left.EndedDown)
-            DebugSquare->DirX--;
+            DebugSquare->DirX -= NewInput->Left.HalfTransitionCount;
 
         if (DebugSquare->DirX > DebugSquare->MaxWidth)
             DebugSquare->DirX = DebugSquare->MaxWidth;
