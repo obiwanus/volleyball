@@ -5,6 +5,22 @@ global game_offscreen_buffer GameBackBuffer;
 global debug_square *DebugSquare;
 
 
+internal int
+TruncateReal32(r32 Value)
+{
+    int Result = (int) Value;
+    return Result;
+}
+
+
+internal int
+RoundReal32(r32 Value)
+{
+    // TODO: think about overflow
+    return TruncateReal32(Value + 0.5f);
+}
+
+
 internal void *
 GameMemoryAlloc(int SizeInBytes)
 {
@@ -21,8 +37,9 @@ GameMemoryAlloc(int SizeInBytes)
 internal void
 DEBUGDrawRectangle(debug_square *Square, u32 Color)
 {
-    int X = Square->X; 
-    int Y = Square->Y;
+    int HalfSize = RoundReal32((r32)Square->Width / 2.0f);
+    int X = Square->X - HalfSize; 
+    int Y = Square->Y - HalfSize;
     int Width = Square->Width;
     int Height = Square->Width;
 
@@ -58,7 +75,7 @@ GameUpdateAndRender()
         DebugSquare->Width = 50;
         DebugSquare->MinWidth = 10;
         DebugSquare->MaxWidth = 150;
-        DebugSquare->DirWidth = -2;
+        DebugSquare->DirWidth = -1;
         DebugSquare->Color = 0x0000FFFF;
 
         GameMemory.IsInitialized = true;
@@ -72,11 +89,14 @@ GameUpdateAndRender()
         DebugSquare->Y += DebugSquare->DirY;
         DebugSquare->Width += DebugSquare->DirWidth;
 
-        int MaxX = GameBackBuffer.Width - DebugSquare->Width;
-        int MaxY = GameBackBuffer.Height - DebugSquare->Width;
+        int HalfSize = RoundReal32((r32)DebugSquare->Width / 2.0f);
+        int MinX = HalfSize;
+        int MinY = HalfSize;
+        int MaxX = GameBackBuffer.Width - HalfSize;
+        int MaxY = GameBackBuffer.Height - HalfSize;
 
-        if (DebugSquare->X <= 0) { DebugSquare->X = 0; DebugSquare->DirX = -DebugSquare->DirX; }
-        if (DebugSquare->Y <= 0) { DebugSquare->Y = 0; DebugSquare->DirY = -DebugSquare->DirY; }
+        if (DebugSquare->X < MinX) { DebugSquare->X = MinX; DebugSquare->DirX = -DebugSquare->DirX; }
+        if (DebugSquare->Y < MinY) { DebugSquare->Y = MinY; DebugSquare->DirY = -DebugSquare->DirY; }
         if (DebugSquare->X > MaxX) { DebugSquare->X = MaxX; DebugSquare->DirX = -DebugSquare->DirX; }
         if (DebugSquare->Y > MaxY) { DebugSquare->Y = MaxY; DebugSquare->DirY = -DebugSquare->DirY; }
         if (DebugSquare->Width > DebugSquare->MaxWidth) 
