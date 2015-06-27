@@ -35,16 +35,35 @@ GameMemoryAlloc(int SizeInBytes)
 }
 
 
-internal void
-DEBUGDrawImage(debug_image *Image, u32 Color)
+internal u8
+UnmaskColor(u32 Pixel, u32 ColorMask)
 {
-    int Width = Image->BMPFile.Width;
-    int Height = Image->BMPFile.Width;
-    int X = Image->X; 
-    int Y = Image->Y;
+    int BitOffset = 0;
+    switch (ColorMask) 
+    {
+        case 0x000000FF:
+            BitOffset = 0;
+            break;
+        case 0x0000FF00:
+            BitOffset = 8;
+            break;
+        case 0x00FF0000:
+            BitOffset = 16;
+            break;
+        case 0xFF000000:
+            BitOffset = 24;
+            break;
+    }
 
+    return (u8)((Pixel&ColorMask) >> BitOffset);
+}
+
+
+internal void
+DEBUGDrawRectangle(int X, int Y, int Width, int Height, u32 Color)
+{
     int Pitch = GameBackBuffer.Width * GameBackBuffer.BytesPerPixel;
-    u8 *Row = (u8 *) GameBackBuffer.Memory + Pitch * Y + X * GameBackBuffer.BytesPerPixel;
+    u8 *Row = (u8 *)GameBackBuffer.Memory + Pitch * Y + X * GameBackBuffer.BytesPerPixel;
     
     for (int pY = Y; pY < Y + Height; pY++)
     {
@@ -52,10 +71,41 @@ DEBUGDrawImage(debug_image *Image, u32 Color)
         for (int pX = X; pX < X + Width; pX++)
         {
             *Pixel++ = Color;
-            // u8 Red = 0xFF;
-            // u8 Green = 0xFF;
-            // u8 Blue = 0;
-            // *Pixel++ = Red << 16 | Green << 8 | Blue;
+        }
+        Row += Pitch;
+    }
+}
+
+
+internal void
+DEBUGDrawImage(debug_image *Image)
+{
+    int Width = Image->BMPFile.Width;
+    int Height = Image->BMPFile.Width;
+    int X = Image->X; 
+    int Y = Image->Y;
+
+    int Pitch = GameBackBuffer.Width * GameBackBuffer.BytesPerPixel;
+    u8 *Row = (u8 *)GameBackBuffer.Memory + Pitch * Y + X * GameBackBuffer.BytesPerPixel;
+    u32 *SrcPixel = (u32 *)Image->BMPFile.Bitmap;
+    
+    for (int pY = Y; pY < Y + Height; pY++)
+    {
+        int *Pixel = (int *) Row;
+        for (int pX = X; pX < X + Width; pX++)
+        {
+            // TODO: bmp may not be masked
+            u8 Red = UnmaskColor(*SrcPixel, Image->BMPFile.RedMask);
+            u8 Green = UnmaskColor(*SrcPixel, Image->BMPFile.GreenMask);
+            u8 Blue = UnmaskColor(*SrcPixel, Image->BMPFile.BlueMask);
+            u8 Alpha = UnmaskColor(*SrcPixel, Image->BMPFile.AlphaMask);
+
+            u32 ResultingPixel = Alpha << 24 | Red << 16 | Green << 8 | Blue;
+            // TODO: blending
+
+            SrcPixel++;
+
+            // *Pixel++ = *SrcPixel++;
         }
         Row += Pitch;
     }
@@ -102,20 +152,17 @@ GameUpdateAndRender(game_input *NewInput)
     if (!DebugImage)
     {
         bmp_file BMPFile = DEBUGReadBMPFile("./img/ball.bmp");
+        DebugImage = (debug_image *)GameMemoryAlloc(sizeof(debug_image));
         DebugImage->BMPFile = BMPFile;
         DebugImage->X = 100; 
         DebugImage->Y = 100;
         DebugImage->DirX = 3;
         DebugImage->DirY = 3;
-        DebugImage->MinWidth = 10;
-        DebugImage->MaxWidth = 150;
-        DebugImage->DirWidth = -1;
-        DebugImage->Color = 0x0000FFFF;
     }
 
     // Move and draw image
     {
-        DEBUGEraseImage(DebugImage);
+        DEBUGDrawRectangle(0, 0, GameBackBuffer.Width, GameBackBuffer.Height, 0x00000000);  // OMG
 
         if (NewInput->Up.EndedDown)
             DebugImage->DirY -= NewInput->Up.HalfTransitionCount;
@@ -126,34 +173,19 @@ GameUpdateAndRender(game_input *NewInput)
         if (NewInput->Left.EndedDown)
             DebugImage->DirX -= NewInput->Left.HalfTransitionCount;
 
-        if (DebugImage->DirX > DebugImage->MaxWidth)
-            DebugImage->DirX = DebugImage->MaxWidth;
-        if (DebugImage->DirX <= -DebugImage->MaxWidth)
-            DebugImage->DirX = -DebugImage->MaxWidth;
-
-        if (DebugImage->DirY > DebugImage->MaxWidth)
-            DebugImage->DirY = DebugImage->MaxWidth;
-        if (DebugImage->DirY <= -DebugImage->MaxWidth)
-            DebugImage->DirY = -DebugImage->MaxWidth;
-
         DebugImage->X += DebugImage->DirX;
         DebugImage->Y += DebugImage->DirY;
 
         int MinX = 0;
         int MinY = 0;
-        int MaxX = GameBackBuffer.Width;
-        int MaxY = GameBackBuffer.Height;
+        int MaxX = GameBackBuffer.Width - DebugImage->BMPFile.Width;
+        int MaxY = GameBackBuffer.Height - DebugImage->BMPFile.Height;
 
         if (DebugImage->X < MinX) { DebugImage->X = MinX; DebugImage->DirX = -DebugImage->DirX; }
         if (DebugImage->Y < MinY) { DebugImage->Y = MinY; DebugImage->DirY = -DebugImage->DirY; }
         if (DebugImage->X > MaxX) { DebugImage->X = MaxX; DebugImage->DirX = -DebugImage->DirX; }
         if (DebugImage->Y > MaxY) { DebugImage->Y = MaxY; DebugImage->DirY = -DebugImage->DirY; }
 
-        u8 Red = (u8) DebugImage->X;
-        u8 Green = (u8) DebugImage->Y;
-        u8 Blue = 0;
-        DebugImage->Color = Red << 16 | Green << 8 | Blue;
-
-        DEBUGDrawImage(DebugImage, DebugImage->Color);
+        DEBUGDrawImage(DebugImage);
     }
 }

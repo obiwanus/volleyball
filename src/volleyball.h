@@ -94,12 +94,8 @@ struct debug_image
 {
     int X;
     int Y;
-    int MinWidth;
-    int MaxWidth;
     int DirX;
     int DirY;
-    int DirWidth;
-    u32 Color;
     bmp_file BMPFile;  
 };
 
