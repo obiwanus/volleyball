@@ -44,17 +44,63 @@ struct game_offscreen_buffer
 };
 
 
-struct debug_square
+struct bmp_file
+{
+    int Width;
+    int Height;
+    void *Bitmap;
+
+    // Zero if compression is not 3
+    u32 RedMask;
+    u32 GreenMask;
+    u32 BlueMask;
+    u32 AlphaMask;
+};
+
+
+#pragma pack(push, 1)
+
+struct bmp_file_header {
+    u16 bfType;
+    u32 bfSize;
+    u16 bfReserved1;
+    u16 bfReserved2;
+    u32 bfOffBits;
+};
+
+
+struct bmp_info_header {
+    u32 biSize;
+    i32 biWidth;
+    i32 biHeight;
+    u16 biPlanes;
+    u16 biBitCount;
+    u32 biCompression;
+    u32 biSizeImage;
+    i32 biXPelsPerMeter;
+    i32 biYPelsPerMeter;
+    u32 biClrUsed;
+    u32 biClrImportant;
+    u32 biRedMask;
+    u32 biGreenMask;
+    u32 biBlueMask;
+    u32 biAlphaMask;
+};
+
+#pragma pack(pop)
+
+
+struct debug_image
 {
     int X;
     int Y;
-    int Width;
     int MinWidth;
     int MaxWidth;
     int DirX;
     int DirY;
     int DirWidth;
     u32 Color;
+    bmp_file BMPFile;  
 };
 
 

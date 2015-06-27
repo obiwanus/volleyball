@@ -25,7 +25,7 @@ DEBUGPlatformReadEntireFile(char *Filename)
         FILE_ATTRIBUTE_NORMAL,
         0);
 
-    if (FileHandle)
+    if (FileHandle != INVALID_HANDLE_VALUE)
     {
         LARGE_INTEGER FileSize;
         if (GetFileSizeEx(FileHandle, &FileSize))
@@ -41,15 +41,15 @@ DEBUGPlatformReadEntireFile(char *Filename)
                 &BytesRead,
                 0);
 
+            CloseHandle(FileHandle);
+            
             return Result;
         }
         else
         {
             OutputDebugStringA("Cannot get file size\n");
             // GetLastError() should help
-        }
-
-        CloseHandle(FileHandle);    
+        }    
     }
     else
     {
@@ -223,7 +223,6 @@ Win32ProcessPendingMessages(game_input *NewInput)
                         NewInput->Right.HalfTransitionCount++;
                         NewInput->Right.EndedDown = IsDown;
                     }
-
                 }
 
                 bool32 AltKeyWasDown = (Message.lParam & (1 << 29));

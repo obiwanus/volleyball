@@ -3,7 +3,7 @@
 global game_memory GameMemory;
 global game_offscreen_buffer GameBackBuffer;
 
-global debug_square *DebugSquare;
+global debug_image *DebugImage;
 
 
 inline int
@@ -36,13 +36,12 @@ GameMemoryAlloc(int SizeInBytes)
 
 
 internal void
-DEBUGDrawRectangle(debug_square *Square, u32 Color)
+DEBUGDrawImage(debug_image *Image, u32 Color)
 {
-    int HalfSize = RoundReal32((r32)Square->Width / 2.0f);
-    int X = Square->X - HalfSize; 
-    int Y = Square->Y - HalfSize;
-    int Width = Square->Width;
-    int Height = Square->Width;
+    int Width = Image->BMPFile.Width;
+    int Height = Image->BMPFile.Width;
+    int X = Image->X; 
+    int Y = Image->Y;
 
     int Pitch = GameBackBuffer.Width * GameBackBuffer.BytesPerPixel;
     u8 *Row = (u8 *) GameBackBuffer.Memory + Pitch * Y + X * GameBackBuffer.BytesPerPixel;
@@ -64,75 +63,97 @@ DEBUGDrawRectangle(debug_square *Square, u32 Color)
 
 
 internal void
-GameUpdateAndRender(game_input *NewInput)
+DEBUGEraseImage(debug_image *Image)
 {
-    if (!DebugSquare)
+
+}
+
+
+internal bmp_file
+DEBUGReadBMPFile(char *Filename)
+{
+    bmp_file Result = {};
+    file_read_result FileReadResult = DEBUGPlatformReadEntireFile(Filename);
+
+    bmp_file_header *BMPFileHeader = (bmp_file_header *)FileReadResult.Memory;
+    bmp_info_header *BMPInfoHeader = (bmp_info_header *)((u8 *)FileReadResult.Memory 
+                                                          + sizeof(bmp_file_header));
+
+    Result.Bitmap = (void *) ((u8 *)FileReadResult.Memory + 
+                              BMPFileHeader->bfOffBits);
+    Result.Width = BMPInfoHeader->biWidth;
+    Result.Height = BMPInfoHeader->biHeight;
+
+    if (BMPInfoHeader->biCompression == 3)  // BI_BITFIELDS
     {
-        DebugSquare = (debug_square *)GameMemoryAlloc(sizeof(debug_square));
-        DebugSquare->X = 100; 
-        DebugSquare->Y = 100;
-        DebugSquare->DirX = 3;
-        DebugSquare->DirY = 3;
-        DebugSquare->Width = 50;
-        DebugSquare->MinWidth = 10;
-        DebugSquare->MaxWidth = 150;
-        DebugSquare->DirWidth = -1;
-        DebugSquare->Color = 0x0000FFFF;
+        Result.RedMask = BMPInfoHeader->biRedMask;
+        Result.GreenMask = BMPInfoHeader->biGreenMask;
+        Result.BlueMask = BMPInfoHeader->biBlueMask;
+        Result.AlphaMask = BMPInfoHeader->biAlphaMask;
     }
 
-    // Move and draw square
+    return Result;
+}
+
+
+internal void
+GameUpdateAndRender(game_input *NewInput)
+{
+    if (!DebugImage)
     {
-        // DEBUGDrawRectangle(DebugSquare, 0x00000000);  // erase
+        bmp_file BMPFile = DEBUGReadBMPFile("./img/ball.bmp");
+        DebugImage->BMPFile = BMPFile;
+        DebugImage->X = 100; 
+        DebugImage->Y = 100;
+        DebugImage->DirX = 3;
+        DebugImage->DirY = 3;
+        DebugImage->MinWidth = 10;
+        DebugImage->MaxWidth = 150;
+        DebugImage->DirWidth = -1;
+        DebugImage->Color = 0x0000FFFF;
+    }
+
+    // Move and draw image
+    {
+        DEBUGEraseImage(DebugImage);
 
         if (NewInput->Up.EndedDown)
-            DebugSquare->DirY -= NewInput->Up.HalfTransitionCount;
+            DebugImage->DirY -= NewInput->Up.HalfTransitionCount;
         if (NewInput->Down.EndedDown)
-            DebugSquare->DirY += NewInput->Down.HalfTransitionCount;
+            DebugImage->DirY += NewInput->Down.HalfTransitionCount;
         if (NewInput->Right.EndedDown)
-            DebugSquare->DirX += NewInput->Right.HalfTransitionCount;
+            DebugImage->DirX += NewInput->Right.HalfTransitionCount;
         if (NewInput->Left.EndedDown)
-            DebugSquare->DirX -= NewInput->Left.HalfTransitionCount;
+            DebugImage->DirX -= NewInput->Left.HalfTransitionCount;
 
-        if (DebugSquare->DirX > DebugSquare->MaxWidth)
-            DebugSquare->DirX = DebugSquare->MaxWidth;
-        if (DebugSquare->DirX <= -DebugSquare->MaxWidth)
-            DebugSquare->DirX = -DebugSquare->MaxWidth;
+        if (DebugImage->DirX > DebugImage->MaxWidth)
+            DebugImage->DirX = DebugImage->MaxWidth;
+        if (DebugImage->DirX <= -DebugImage->MaxWidth)
+            DebugImage->DirX = -DebugImage->MaxWidth;
 
-        if (DebugSquare->DirY > DebugSquare->MaxWidth)
-            DebugSquare->DirY = DebugSquare->MaxWidth;
-        if (DebugSquare->DirY <= -DebugSquare->MaxWidth)
-            DebugSquare->DirY = -DebugSquare->MaxWidth;
+        if (DebugImage->DirY > DebugImage->MaxWidth)
+            DebugImage->DirY = DebugImage->MaxWidth;
+        if (DebugImage->DirY <= -DebugImage->MaxWidth)
+            DebugImage->DirY = -DebugImage->MaxWidth;
 
-        DebugSquare->X += DebugSquare->DirX;
-        DebugSquare->Y += DebugSquare->DirY;
-        DebugSquare->Width += DebugSquare->DirWidth;
+        DebugImage->X += DebugImage->DirX;
+        DebugImage->Y += DebugImage->DirY;
 
-        int HalfSize = RoundReal32((r32)DebugSquare->Width / 2.0f);
-        int MinX = HalfSize;
-        int MinY = HalfSize;
-        int MaxX = GameBackBuffer.Width - HalfSize;
-        int MaxY = GameBackBuffer.Height - HalfSize;
+        int MinX = 0;
+        int MinY = 0;
+        int MaxX = GameBackBuffer.Width;
+        int MaxY = GameBackBuffer.Height;
 
-        if (DebugSquare->X < MinX) { DebugSquare->X = MinX; DebugSquare->DirX = -DebugSquare->DirX; }
-        if (DebugSquare->Y < MinY) { DebugSquare->Y = MinY; DebugSquare->DirY = -DebugSquare->DirY; }
-        if (DebugSquare->X > MaxX) { DebugSquare->X = MaxX; DebugSquare->DirX = -DebugSquare->DirX; }
-        if (DebugSquare->Y > MaxY) { DebugSquare->Y = MaxY; DebugSquare->DirY = -DebugSquare->DirY; }
-        if (DebugSquare->Width > DebugSquare->MaxWidth) 
-        { 
-            DebugSquare->Width = DebugSquare->MaxWidth; 
-            DebugSquare->DirWidth = -DebugSquare->DirWidth; 
-        }
-        if (DebugSquare->Width <= DebugSquare->MinWidth) 
-        { 
-            DebugSquare->Width = DebugSquare->MinWidth; 
-            DebugSquare->DirWidth = -DebugSquare->DirWidth; 
-        }
+        if (DebugImage->X < MinX) { DebugImage->X = MinX; DebugImage->DirX = -DebugImage->DirX; }
+        if (DebugImage->Y < MinY) { DebugImage->Y = MinY; DebugImage->DirY = -DebugImage->DirY; }
+        if (DebugImage->X > MaxX) { DebugImage->X = MaxX; DebugImage->DirX = -DebugImage->DirX; }
+        if (DebugImage->Y > MaxY) { DebugImage->Y = MaxY; DebugImage->DirY = -DebugImage->DirY; }
 
-        u8 Red = (u8) DebugSquare->X;
-        u8 Green = (u8) DebugSquare->Y;
-        u8 Blue = (u8) DebugSquare->Width;
-        DebugSquare->Color = Red << 16 | Green << 8 | Blue;
+        u8 Red = (u8) DebugImage->X;
+        u8 Green = (u8) DebugImage->Y;
+        u8 Blue = 0;
+        DebugImage->Color = Red << 16 | Green << 8 | Blue;
 
-        DEBUGDrawRectangle(DebugSquare, DebugSquare->Color);
+        DEBUGDrawImage(DebugImage, DebugImage->Color);
     }
 }
