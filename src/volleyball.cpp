@@ -195,14 +195,17 @@ GameUpdateAndRender(game_input *NewInput)
     {
         DEBUGDrawRectangle(0, 0, GameBackBuffer.Width, GameBackBuffer.Height, 0x00002222);  // OMG
 
+        DebugImage->DirX = 0;
+        DebugImage->DirY = 0;
+
         if (NewInput->Up.EndedDown)
-            DebugImage->DirY -= NewInput->Up.HalfTransitionCount;
+            DebugImage->DirY = -NewInput->Up.HalfTransitionCount;
         if (NewInput->Down.EndedDown)
-            DebugImage->DirY += NewInput->Down.HalfTransitionCount;
+            DebugImage->DirY = NewInput->Down.HalfTransitionCount;
         if (NewInput->Right.EndedDown)
-            DebugImage->DirX += NewInput->Right.HalfTransitionCount;
+            DebugImage->DirX = NewInput->Right.HalfTransitionCount;
         if (NewInput->Left.EndedDown)
-            DebugImage->DirX -= NewInput->Left.HalfTransitionCount;
+            DebugImage->DirX = -NewInput->Left.HalfTransitionCount;
 
         DebugImage->X += DebugImage->DirX;
         DebugImage->Y += DebugImage->DirY;
