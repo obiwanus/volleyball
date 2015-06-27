@@ -42,7 +42,7 @@ DEBUGPlatformReadEntireFile(char *Filename)
                 0);
 
             CloseHandle(FileHandle);
-            
+
             return Result;
         }
         else

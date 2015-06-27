@@ -87,11 +87,13 @@ DEBUGDrawImage(debug_image *Image)
 
     int Pitch = GameBackBuffer.Width * GameBackBuffer.BytesPerPixel;
     u8 *Row = (u8 *)GameBackBuffer.Memory + Pitch * Y + X * GameBackBuffer.BytesPerPixel;
-    u32 *SrcPixel = (u32 *)Image->BMPFile.Bitmap;
+    u32 *SrcRow = (u32 *)Image->BMPFile.Bitmap + Height * Width - Width;  // bottom row first
     
     for (int pY = Y; pY < Y + Height; pY++)
     {
         int *Pixel = (int *) Row;
+        int *SrcPixel = (int *) SrcRow;
+
         for (int pX = X; pX < X + Width; pX++)
         {
             // TODO: bmp may not be masked
@@ -100,14 +102,43 @@ DEBUGDrawImage(debug_image *Image)
             u8 Blue = UnmaskColor(*SrcPixel, Image->BMPFile.BlueMask);
             u8 Alpha = UnmaskColor(*SrcPixel, Image->BMPFile.AlphaMask);
 
-            u32 ResultingPixel = Alpha << 24 | Red << 16 | Green << 8 | Blue;
-            // TODO: blending
+            u32 ResultingColor = Red << 16 | Green << 8 | Blue;
 
+            if (Alpha > 0 && Alpha < 0xFF)
+            {
+                r32 ExistingRed = (r32)((*Pixel >> 16) & 0xFF);
+                r32 ExistingGreen = (r32)((*Pixel >> 8) & 0xFF);
+                r32 ExistingBlue = (r32)((*Pixel >> 0) & 0xFF);
+
+                r32 NewRed = (r32)((ResultingColor >> 16) & 0xFF);
+                r32 NewGreen = (r32)((ResultingColor >> 8) & 0xFF);
+                r32 NewBlue = (r32)((ResultingColor >> 0) & 0xFF);
+
+                // Blending
+                r32 t = (r32)Alpha / 255.0f;
+
+                NewRed = NewRed * t + ExistingRed * (1 - t);
+                NewGreen = NewGreen * t + ExistingGreen * (1 - t);
+                NewBlue = NewBlue * t + ExistingBlue * (1 - t);
+
+                *Pixel = (((u8)NewRed << 16) |
+                          ((u8)NewGreen << 8) |
+                          ((u8)NewBlue << 0));
+            }
+            else if (Alpha == 0xFF)
+            {
+                *Pixel = ResultingColor;
+            }
+            else
+            {
+                // do nothing
+            }
+            
+            Pixel++;
             SrcPixel++;
-
-            // *Pixel++ = *SrcPixel++;
         }
         Row += Pitch;
+        SrcRow -= Width;
     }
 }
 
@@ -151,18 +182,18 @@ GameUpdateAndRender(game_input *NewInput)
 {
     if (!DebugImage)
     {
-        bmp_file BMPFile = DEBUGReadBMPFile("./img/ball.bmp");
+        bmp_file BMPFile = DEBUGReadBMPFile("./img/player_red.bmp");
         DebugImage = (debug_image *)GameMemoryAlloc(sizeof(debug_image));
         DebugImage->BMPFile = BMPFile;
-        DebugImage->X = 100; 
-        DebugImage->Y = 100;
-        DebugImage->DirX = 3;
-        DebugImage->DirY = 3;
+        DebugImage->X = GameBackBuffer.Width / 2; 
+        DebugImage->Y = GameBackBuffer.Height / 2;
+        DebugImage->DirX = 0;
+        DebugImage->DirY = 0;
     }
 
     // Move and draw image
     {
-        DEBUGDrawRectangle(0, 0, GameBackBuffer.Width, GameBackBuffer.Height, 0x00000000);  // OMG
+        DEBUGDrawRectangle(0, 0, GameBackBuffer.Width, GameBackBuffer.Height, 0x00002222);  // OMG
 
         if (NewInput->Up.EndedDown)
             DebugImage->DirY -= NewInput->Up.HalfTransitionCount;
