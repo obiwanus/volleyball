@@ -297,6 +297,8 @@ WinMain(HINSTANCE hInstance,
 
         // We're not going to release it as we use CS_OWNDC
         HDC hdc = GetDC(Window);
+        
+        PatBlt(hdc, 0, 0, WindowWidth, WindowHeight, BLACKNESS);
 
         if (Window)
         {
@@ -308,6 +310,7 @@ WinMain(HINSTANCE hInstance,
             {
                 GameMemory.MemorySize = 1024 * 1024 * 1024;  // 1 Gigabyte
                 GameMemory.Start = VirtualAlloc(0, GameMemory.MemorySize, MEM_COMMIT, PAGE_READWRITE);
+                SecureZeroMemory(GameMemory.Start, GameMemory.MemorySize);
                 GameMemory.Free = GameMemory.Start;
                 GameMemory.IsInitialized = true;
             }
