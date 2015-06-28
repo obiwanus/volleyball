@@ -179,13 +179,29 @@ Win32WindowProc(
 
 
 internal void
+Win32ProcessKeyboardMessage(game_button_state *NewState, bool32 IsDown)
+{
+    if (NewState->EndedDown != IsDown)
+    {
+        NewState->HalfTransitionCount++;
+        NewState->EndedDown = IsDown;
+    }
+    else
+    {
+        // This may happen if user pressed two buttons
+        // that trigger the same action simultaneously
+    }
+}
+
+
+internal void
 Win32ProcessPendingMessages(game_input *NewInput)
 {
     MSG Message;
-    while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
+    while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
     {
         // Get keyboard messages
-        switch(Message.message)
+        switch (Message.message)
         {
             case WM_QUIT:
             {
@@ -202,26 +218,23 @@ Win32ProcessPendingMessages(game_input *NewInput)
                 bool32 IsDown = ((Message.lParam & (1 << 31)) == 0);
 
                 // Get input
+                if (IsDown != WasDown)
                 {
                     if(VKCode == 'W' || VKCode == VK_UP)
                     {
-                        NewInput->Up.HalfTransitionCount++;
-                        NewInput->Up.EndedDown = IsDown;
+                        Win32ProcessKeyboardMessage(&NewInput->Up, IsDown);
                     }
                     else if(VKCode == 'S' || VKCode == VK_DOWN)
                     {
-                        NewInput->Down.HalfTransitionCount++;
-                        NewInput->Down.EndedDown = IsDown;
+                        Win32ProcessKeyboardMessage(&NewInput->Down, IsDown);
                     }
                     else if(VKCode == 'A' || VKCode == VK_LEFT)
                     {
-                        NewInput->Left.HalfTransitionCount++;
-                        NewInput->Left.EndedDown = IsDown;
+                        Win32ProcessKeyboardMessage(&NewInput->Left, IsDown);
                     }
                     else if(VKCode == 'D' || VKCode == VK_RIGHT)
                     {
-                        NewInput->Right.HalfTransitionCount++;
-                        NewInput->Right.EndedDown = IsDown;
+                        Win32ProcessKeyboardMessage(&NewInput->Right, IsDown);
                     }
                 }
 
@@ -263,7 +276,7 @@ WinMain(HINSTANCE hInstance,
         #define TARGET_SLEEP_RESOLUTION 1   // 1-millisecond target resolution
 
         TIMECAPS tc;
-        UINT     wTimerRes;
+        UINT wTimerRes;
 
         if (timeGetDevCaps(&tc, sizeof(TIMECAPS)) != TIMERR_NOERROR) 
         {
@@ -355,6 +368,11 @@ WinMain(HINSTANCE hInstance,
                 NewInput = TmpInput;
                 *NewInput = {};  // zero everything
 
+                // Retain the EndedDown state
+                for (int i = 0; i < COUNT_OF(NewInput->Buttons); i++)
+                {
+                    NewInput->Buttons[i].EndedDown = OldInput->Buttons[i].EndedDown;
+                }
 
                 Win32UpdateWindow(hdc);
 

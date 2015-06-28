@@ -23,6 +23,8 @@ typedef i32 bool32;
 #define Assert(Expression)
 #endif
 
+#define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
+
 
 struct game_memory
 {
@@ -109,10 +111,18 @@ struct game_button_state
 
 struct game_input
 {
-    game_button_state Up;
-    game_button_state Down;
-    game_button_state Left;
-    game_button_state Right;
+    union
+    {
+        game_button_state Buttons[4];
+
+        struct
+        {
+            game_button_state Up;
+            game_button_state Down;
+            game_button_state Left;
+            game_button_state Right;       
+        };
+    };
 };
 
 

@@ -35,7 +35,7 @@ GameMemoryAlloc(int SizeInBytes)
 }
 
 
-internal u8
+inline u8
 UnmaskColor(u32 Pixel, u32 ColorMask)
 {
     int BitOffset = 0;
@@ -197,15 +197,18 @@ GameUpdateAndRender(game_input *NewInput)
 
         DebugImage->DirX = 0;
         DebugImage->DirY = 0;
+        
+        int Velocity = 3;
+        DebugImage->DirX = DebugImage->DirY = 0;  // avoid button precedence
 
         if (NewInput->Up.EndedDown)
-            DebugImage->DirY = -NewInput->Up.HalfTransitionCount;
+            DebugImage->DirY -= Velocity;
         if (NewInput->Down.EndedDown)
-            DebugImage->DirY = NewInput->Down.HalfTransitionCount;
+            DebugImage->DirY += Velocity;
         if (NewInput->Right.EndedDown)
-            DebugImage->DirX = NewInput->Right.HalfTransitionCount;
+            DebugImage->DirX += Velocity;
         if (NewInput->Left.EndedDown)
-            DebugImage->DirX = -NewInput->Left.HalfTransitionCount;
+            DebugImage->DirX -= Velocity;
 
         DebugImage->X += DebugImage->DirX;
         DebugImage->Y += DebugImage->DirY;
