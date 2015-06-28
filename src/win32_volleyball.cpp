@@ -298,7 +298,10 @@ WinMain(HINSTANCE hInstance,
         // We're not going to release it as we use CS_OWNDC
         HDC hdc = GetDC(Window);
         
-        PatBlt(hdc, 0, 0, WindowWidth, WindowHeight, BLACKNESS);
+        HBRUSH BgBrush = CreateSolidBrush(RGB(0x00, 0x22, 0x22));
+        SelectObject(hdc, BgBrush);
+        PatBlt(hdc, 0, 0, WindowWidth, WindowHeight, PATCOPY);
+        DeleteObject(BgBrush);
 
         if (Window)
         {
