@@ -1,3 +1,4 @@
+#include "volleyball_math.h"
 #include "volleyball.h"
 
 global game_memory GameMemory;
@@ -39,7 +40,7 @@ inline u8
 UnmaskColor(u32 Pixel, u32 ColorMask)
 {
     int BitOffset = 0;
-    switch (ColorMask) 
+    switch (ColorMask)
     {
         case 0x000000FF:
             BitOffset = 0;
@@ -64,7 +65,7 @@ DEBUGDrawRectangle(int X, int Y, int Width, int Height, u32 Color)
 {
     int Pitch = GameBackBuffer.Width * GameBackBuffer.BytesPerPixel;
     u8 *Row = (u8 *)GameBackBuffer.Memory + Pitch * Y + X * GameBackBuffer.BytesPerPixel;
-    
+
     for (int pY = Y; pY < Y + Height; pY++)
     {
         int *Pixel = (int *) Row;
@@ -82,13 +83,13 @@ DEBUGDrawImage(debug_image *Image)
 {
     int Width = Image->BMPFile.Width;
     int Height = Image->BMPFile.Width;
-    int X = Image->X; 
-    int Y = Image->Y;
+    int X = (int)Image->Position.x;
+    int Y = (int)Image->Position.y;
 
     int Pitch = GameBackBuffer.Width * GameBackBuffer.BytesPerPixel;
     u8 *Row = (u8 *)GameBackBuffer.Memory + Pitch * Y + X * GameBackBuffer.BytesPerPixel;
     u32 *SrcRow = (u32 *)Image->BMPFile.Bitmap + Height * Width - Width;  // bottom row first
-    
+
     for (int pY = Y; pY < Y + Height; pY++)
     {
         int *Pixel = (int *) Row;
@@ -133,7 +134,7 @@ DEBUGDrawImage(debug_image *Image)
             {
                 // do nothing
             }
-            
+
             Pixel++;
             SrcPixel++;
         }
@@ -157,10 +158,10 @@ DEBUGReadBMPFile(char *Filename)
     file_read_result FileReadResult = DEBUGPlatformReadEntireFile(Filename);
 
     bmp_file_header *BMPFileHeader = (bmp_file_header *)FileReadResult.Memory;
-    bmp_info_header *BMPInfoHeader = (bmp_info_header *)((u8 *)FileReadResult.Memory 
+    bmp_info_header *BMPInfoHeader = (bmp_info_header *)((u8 *)FileReadResult.Memory
                                                           + sizeof(bmp_file_header));
 
-    Result.Bitmap = (void *) ((u8 *)FileReadResult.Memory + 
+    Result.Bitmap = (void *) ((u8 *)FileReadResult.Memory +
                               BMPFileHeader->bfOffBits);
     Result.Width = BMPInfoHeader->biWidth;
     Result.Height = BMPInfoHeader->biHeight;
@@ -185,43 +186,65 @@ GameUpdateAndRender(game_input *NewInput)
         bmp_file BMPFile = DEBUGReadBMPFile("./img/player_red.bmp");
         DebugImage = (debug_image *)GameMemoryAlloc(sizeof(debug_image));
         DebugImage->BMPFile = BMPFile;
-        DebugImage->X = GameBackBuffer.Width / 2; 
-        DebugImage->Y = GameBackBuffer.Height / 2;
-        DebugImage->DirX = 0;
-        DebugImage->DirY = 0;
+        DebugImage->Position = {(r32)GameBackBuffer.Width / 2.0f,
+                                (r32)GameBackBuffer.Height / 2.0f};
+        DebugImage->Velocity = {};
     }
 
     // Move and draw image
     {
         DEBUGDrawRectangle(0, 0, GameBackBuffer.Width, GameBackBuffer.Height, 0x00002222);  // OMG
 
-        DebugImage->DirX = 0;
-        DebugImage->DirY = 0;
-        
-        int Velocity = 3;
-        DebugImage->DirX = DebugImage->DirY = 0;  // avoid button precedence
+        v2 PlayerDirection = {};
 
         if (NewInput->Up.EndedDown)
-            DebugImage->DirY -= Velocity;
+            PlayerDirection.y -= 1.0f;
         if (NewInput->Down.EndedDown)
-            DebugImage->DirY += Velocity;
+            PlayerDirection.y += 1.0f;
         if (NewInput->Right.EndedDown)
-            DebugImage->DirX += Velocity;
+            PlayerDirection.x += 1.0f;
         if (NewInput->Left.EndedDown)
-            DebugImage->DirX -= Velocity;
+            PlayerDirection.x -= 1.0f;
 
-        DebugImage->X += DebugImage->DirX;
-        DebugImage->Y += DebugImage->DirY;
+        if (PlayerDirection.x != 0 && PlayerDirection.y != 0)
+        {
+            PlayerDirection *= 0.70710678118f;
+        }
 
-        int MinX = 0;
-        int MinY = 0;
-        int MaxX = GameBackBuffer.Width - DebugImage->BMPFile.Width;
-        int MaxY = GameBackBuffer.Height - DebugImage->BMPFile.Height;
+        PlayerDirection *= 2.0f;  // speed
+        PlayerDirection -= 0.2f * DebugImage->Velocity;
 
-        if (DebugImage->X < MinX) { DebugImage->X = MinX; DebugImage->DirX = -DebugImage->DirX; }
-        if (DebugImage->Y < MinY) { DebugImage->Y = MinY; DebugImage->DirY = -DebugImage->DirY; }
-        if (DebugImage->X > MaxX) { DebugImage->X = MaxX; DebugImage->DirX = -DebugImage->DirX; }
-        if (DebugImage->Y > MaxY) { DebugImage->Y = MaxY; DebugImage->DirY = -DebugImage->DirY; }
+        DebugImage->Velocity += PlayerDirection;
+
+        // TODO: delta time here
+        DebugImage->Position += DebugImage->Velocity;
+
+        // Collisions with walls
+        r32 MinX = 0.0f;
+        r32 MinY = 0.0f;
+        r32 MaxX = (r32)(GameBackBuffer.Width - DebugImage->BMPFile.Width);
+        r32 MaxY = (r32)(GameBackBuffer.Height - DebugImage->BMPFile.Height);
+
+        if (DebugImage->Position.x < MinX)
+        {
+            DebugImage->Position.x = MinX;
+            DebugImage->Velocity.x = -DebugImage->Velocity.x;
+        }
+        if (DebugImage->Position.y < MinY)
+        {
+            DebugImage->Position.y = MinY;
+            DebugImage->Velocity.y = -DebugImage->Velocity.y;
+        }
+        if (DebugImage->Position.x > MaxX)
+        {
+            DebugImage->Position.x = MaxX;
+            DebugImage->Velocity.x = -DebugImage->Velocity.x;
+        }
+        if (DebugImage->Position.y > MaxY)
+        {
+            DebugImage->Position.y = MaxY;
+            DebugImage->Velocity.y = -DebugImage->Velocity.y;
+        }
 
         DEBUGDrawImage(DebugImage);
     }
