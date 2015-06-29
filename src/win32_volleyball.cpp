@@ -50,7 +50,7 @@ DEBUGPlatformReadEntireFile(char *Filename)
         {
             OutputDebugStringA("Cannot get file size\n");
             // GetLastError() should help
-        }    
+        }
     }
     else
     {
@@ -103,7 +103,7 @@ Win32ResizeClientWindow(HWND Window)
 }
 
 
-inline LARGE_INTEGER 
+inline LARGE_INTEGER
 Win32GetWallClock()
 {
     LARGE_INTEGER Result;
@@ -116,14 +116,14 @@ Win32GetWallClock()
 inline r32
 Win32GetMillisecondsElapsed(LARGE_INTEGER Start, LARGE_INTEGER End)
 {
-    r32 Result = 1000.0f * (r32) (End.QuadPart - Start.QuadPart) / 
+    r32 Result = 1000.0f * (r32) (End.QuadPart - Start.QuadPart) /
                  (r32) GlobalPerformanceFrequency.QuadPart;
 
     return Result;
 }
 
 
-LRESULT CALLBACK 
+LRESULT CALLBACK
 Win32WindowProc(
     HWND hwnd,
     UINT uMsg,
@@ -157,7 +157,7 @@ Win32WindowProc(
             );
 
             OutputDebugStringA("WM_PAINT\n");
-            
+
             EndPaint(hwnd, &Paint);
         } break;
 
@@ -218,24 +218,43 @@ Win32ProcessPendingMessages(game_input *NewInput)
                 bool32 WasDown = ((Message.lParam & (1 << 30)) != 0);
                 bool32 IsDown = ((Message.lParam & (1 << 31)) == 0);
 
+                player_input *Player1 = &NewInput->Player1;
+                player_input *Player2 = &NewInput->Player2;
+
                 // Get input
                 if (IsDown != WasDown)
                 {
-                    if(VKCode == 'W' || VKCode == VK_UP)
+                    if(VKCode == 'W')
                     {
-                        Win32ProcessKeyboardMessage(&NewInput->Up, IsDown);
+                        Win32ProcessKeyboardMessage(&Player1->Up, IsDown);
                     }
-                    else if(VKCode == 'S' || VKCode == VK_DOWN)
+                    else if(VKCode == 'S')
                     {
-                        Win32ProcessKeyboardMessage(&NewInput->Down, IsDown);
+                        Win32ProcessKeyboardMessage(&Player1->Down, IsDown);
                     }
-                    else if(VKCode == 'A' || VKCode == VK_LEFT)
+                    else if(VKCode == 'A')
                     {
-                        Win32ProcessKeyboardMessage(&NewInput->Left, IsDown);
+                        Win32ProcessKeyboardMessage(&Player1->Left, IsDown);
                     }
-                    else if(VKCode == 'D' || VKCode == VK_RIGHT)
+                    else if(VKCode == 'D')
                     {
-                        Win32ProcessKeyboardMessage(&NewInput->Right, IsDown);
+                        Win32ProcessKeyboardMessage(&Player1->Right, IsDown);
+                    }
+                    else if(VKCode == VK_UP)
+                    {
+                        Win32ProcessKeyboardMessage(&Player2->Up, IsDown);
+                    }
+                    else if(VKCode == VK_DOWN)
+                    {
+                        Win32ProcessKeyboardMessage(&Player2->Down, IsDown);
+                    }
+                    else if(VKCode == VK_LEFT)
+                    {
+                        Win32ProcessKeyboardMessage(&Player2->Left, IsDown);
+                    }
+                    else if(VKCode == VK_RIGHT)
+                    {
+                        Win32ProcessKeyboardMessage(&Player2->Right, IsDown);
                     }
                 }
 
@@ -256,7 +275,7 @@ Win32ProcessPendingMessages(game_input *NewInput)
 }
 
 
-int CALLBACK 
+int CALLBACK
 WinMain(HINSTANCE hInstance,
         HINSTANCE hPrevInstance,
         LPSTR lpCmdLine,
@@ -279,7 +298,7 @@ WinMain(HINSTANCE hInstance,
         TIMECAPS tc;
         UINT wTimerRes;
 
-        if (timeGetDevCaps(&tc, sizeof(TIMECAPS)) != TIMERR_NOERROR) 
+        if (timeGetDevCaps(&tc, sizeof(TIMECAPS)) != TIMERR_NOERROR)
         {
             OutputDebugStringA("Cannot set the sleep resolution\n");
             exit(1);
@@ -288,8 +307,8 @@ WinMain(HINSTANCE hInstance,
         wTimerRes = min(max(tc.wPeriodMin, TARGET_SLEEP_RESOLUTION), tc.wPeriodMax);
         timeBeginPeriod(wTimerRes);
     }
-    
-    QueryPerformanceFrequency(&GlobalPerformanceFrequency); 
+
+    QueryPerformanceFrequency(&GlobalPerformanceFrequency);
 
     if (RegisterClass(&WindowClass))
     {
@@ -311,7 +330,7 @@ WinMain(HINSTANCE hInstance,
 
         // We're not going to release it as we use CS_OWNDC
         HDC hdc = GetDC(Window);
-        
+
         HBRUSH BgBrush = CreateSolidBrush(RGB(0x00, 0x22, 0x22));
         SelectObject(hdc, BgBrush);
         PatBlt(hdc, 0, 0, WindowWidth, WindowHeight, PATCOPY);
@@ -338,10 +357,10 @@ WinMain(HINSTANCE hInstance,
                 GameBackBuffer.MaxHeight = 1500;
                 GameBackBuffer.BytesPerPixel = 4;
 
-                int BufferSize = GameBackBuffer.MaxWidth * GameBackBuffer.MaxHeight 
+                int BufferSize = GameBackBuffer.MaxWidth * GameBackBuffer.MaxHeight
                                   * GameBackBuffer.BytesPerPixel;
-                GameBackBuffer.Memory = GameMemoryAlloc(BufferSize);                                  
-                
+                GameBackBuffer.Memory = GameMemoryAlloc(BufferSize);
+
                 GlobalBitmapInfo.bmiHeader.biSize = sizeof(GlobalBitmapInfo.bmiHeader);
                 GlobalBitmapInfo.bmiHeader.biPlanes = 1;
                 GlobalBitmapInfo.bmiHeader.biBitCount = 32;
@@ -370,9 +389,15 @@ WinMain(HINSTANCE hInstance,
                 *NewInput = {};  // zero everything
 
                 // Retain the EndedDown state
-                for (int i = 0; i < COUNT_OF(NewInput->Buttons); i++)
+                for (int PlayerNum = 0; PlayerNum < COUNT_OF(NewInput->Players); PlayerNum++)
                 {
-                    NewInput->Buttons[i].EndedDown = OldInput->Buttons[i].EndedDown;
+                    player_input *OldPlayerInput = &OldInput->Players[PlayerNum];
+                    player_input *NewPlayerInput = &NewInput->Players[PlayerNum];
+                    for (int ButtonNum = 0; ButtonNum < COUNT_OF(OldPlayerInput->Buttons); ButtonNum++)
+                    {
+                        NewPlayerInput->Buttons[ButtonNum].EndedDown =
+                            OldPlayerInput->Buttons[ButtonNum].EndedDown;
+                    }
                 }
 
                 Win32UpdateWindow(hdc);

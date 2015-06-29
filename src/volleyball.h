@@ -68,14 +68,6 @@ struct bmp_info_header {
 #pragma pack(pop)
 
 
-struct debug_image
-{
-    v2 Position;
-    v2 Velocity;
-    bmp_file BMPFile;  
-};
-
-
 struct game_button_state
 {
     int HalfTransitionCount;
@@ -83,7 +75,7 @@ struct game_button_state
 };
 
 
-struct game_input
+struct player_input
 {
     union
     {
@@ -94,9 +86,28 @@ struct game_input
             game_button_state Up;
             game_button_state Down;
             game_button_state Left;
-            game_button_state Right;       
+            game_button_state Right;
         };
     };
+};
+
+
+union game_input
+{
+    player_input Players[2];
+    struct
+    {
+        player_input Player1;
+        player_input Player2;
+    };
+};
+
+
+struct player
+{
+    v2 Position;
+    v2 Velocity;
+    bmp_file BMPFile;
 };
 
 
