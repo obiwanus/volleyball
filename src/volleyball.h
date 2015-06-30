@@ -104,11 +104,11 @@ union game_input
 };
 
 
-struct player
+struct entity
 {
     v2 Position;
     v2 Velocity;
-    bmp_file BMPFile;
+    bmp_file Image;
 };
 
 

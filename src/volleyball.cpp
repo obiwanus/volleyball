@@ -5,7 +5,7 @@
 global game_memory GameMemory;
 global game_offscreen_buffer GameBackBuffer;
 
-global player *Players;
+global entity *Players;
 
 
 inline int
@@ -173,17 +173,17 @@ DEBUGReadBMPFile(char *Filename)
 
 
 internal void
-InitPlayer(player *Player, char *ImgPath, v2 Position)
+InitPlayer(entity *Player, char *ImgPath, v2 Position)
 {
     bmp_file BMPFile = DEBUGReadBMPFile(ImgPath);
-    Player->BMPFile = BMPFile;
+    Player->Image = BMPFile;
     Player->Position = Position;
     Player->Velocity = {};
 }
 
 
 internal void
-UpdatePlayer(player *Player, player_input *Input, r32 dtForFrame)
+UpdatePlayer(entity *Player, player_input *Input, r32 dtForFrame)
 {
     v2 PlayerDirection = {};
 
@@ -211,8 +211,8 @@ UpdatePlayer(player *Player, player_input *Input, r32 dtForFrame)
     // Collisions with walls
     r32 MinX = 0.0f;
     r32 MinY = 0.0f;
-    r32 MaxX = (r32)(GameBackBuffer.Width - Player->BMPFile.Width);
-    r32 MaxY = (r32)(GameBackBuffer.Height - Player->BMPFile.Height);
+    r32 MaxX = (r32)(GameBackBuffer.Width - Player->Image.Width);
+    r32 MaxY = (r32)(GameBackBuffer.Height - Player->Image.Height);
 
     if (Player->Position.x < MinX)
     {
@@ -239,7 +239,7 @@ UpdatePlayer(player *Player, player_input *Input, r32 dtForFrame)
     // sprintf_s(Buffer, "%.2f, %.2f\n", Player->Position.x, Player->Position.y);
     // OutputDebugStringA(Buffer);
 
-    DEBUGDrawImage(Player->Position, Player->BMPFile);
+    DEBUGDrawImage(Player->Position, Player->Image);
 }
 
 
@@ -248,7 +248,7 @@ GameUpdateAndRender(game_input *NewInput)
 {
     if (!Players)
     {
-        Players = (player *)GameMemoryAlloc(sizeof(player) * 2);  // 2 players
+        Players = (entity *)GameMemoryAlloc(sizeof(entity) * 2);  // 2 players
 
         InitPlayer(
             &Players[0],
