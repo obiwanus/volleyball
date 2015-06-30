@@ -245,8 +245,6 @@ UpdatePlayer(entity *Player, player_input *Input, r32 dtForFrame)
     // char Buffer[256];
     // sprintf_s(Buffer, "%.2f, %.2f\n", Player->Position.x, Player->Position.y);
     // OutputDebugStringA(Buffer);
-
-    DEBUGDrawImage(Player->Position, Player->Image);
 }
 
 
@@ -280,15 +278,22 @@ GameUpdateAndRender(game_input *NewInput)
     // Move and draw image
     DEBUGDrawRectangle(0, 0, GameBackBuffer.Width, GameBackBuffer.Height, 0x00002222);  // OMG
 
-    for (int PlayerNum = 0; PlayerNum < COUNT_OF(NewInput->Players); PlayerNum++)
+    // Update players
     {
-        UpdatePlayer(&Players[PlayerNum], &NewInput->Players[PlayerNum], NewInput->dtForFrame);
+        UpdatePlayer(&Players[0], &NewInput->Players[0], NewInput->dtForFrame);
+        UpdatePlayer(&Players[1], &NewInput->Players[1], NewInput->dtForFrame);
     }
 
     // Update ball
     {
         Ball->Position += Ball->Velocity * NewInput->dtForFrame;
         CollideWithWalls(Ball);
+    }
+
+    // Draw
+    {
+        DEBUGDrawImage(Players[0].Position, Players[0].Image);
+        DEBUGDrawImage(Players[1].Position, Players[1].Image);
         DEBUGDrawImage(Ball->Position, Ball->Image);
     }
 }
