@@ -1,6 +1,7 @@
 #include "volleyball_math.h"
 #include "volleyball.h"
 
+
 global game_memory GameMemory;
 global game_offscreen_buffer GameBackBuffer;
 
@@ -182,7 +183,7 @@ InitPlayer(player *Player, char *ImgPath, v2 Position)
 
 
 internal void
-UpdatePlayer(player *Player, player_input *Input)
+UpdatePlayer(player *Player, player_input *Input, r32 dtForFrame)
 {
     v2 PlayerDirection = {};
 
@@ -200,13 +201,12 @@ UpdatePlayer(player *Player, player_input *Input)
         PlayerDirection *= 0.70710678118f;
     }
 
-    PlayerDirection *= 2.0f;  // speed
-    PlayerDirection -= 0.2f * Player->Velocity;
+    PlayerDirection *= 0.25f;  // speed, px/ms
+    PlayerDirection -= 0.2f * Player->Velocity;  // friction
 
     Player->Velocity += PlayerDirection;
 
-    // TODO: delta time here
-    Player->Position += Player->Velocity;
+    Player->Position += Player->Velocity * dtForFrame;
 
     // Collisions with walls
     r32 MinX = 0.0f;
@@ -235,6 +235,10 @@ UpdatePlayer(player *Player, player_input *Input)
         Player->Velocity.y = -Player->Velocity.y;
     }
 
+    // char Buffer[256];
+    // sprintf_s(Buffer, "%.2f, %.2f\n", Player->Position.x, Player->Position.y);
+    // OutputDebugStringA(Buffer);
+
     DEBUGDrawImage(Player->Position, Player->BMPFile);
 }
 
@@ -262,6 +266,8 @@ GameUpdateAndRender(game_input *NewInput)
 
     for (int PlayerNum = 0; PlayerNum < COUNT_OF(NewInput->Players); PlayerNum++)
     {
-        UpdatePlayer(&Players[PlayerNum], &NewInput->Players[PlayerNum]);
+        UpdatePlayer(&Players[PlayerNum], &NewInput->Players[PlayerNum], NewInput->dtForFrame);
     }
 }
+
+

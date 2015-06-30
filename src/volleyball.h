@@ -100,6 +100,7 @@ union game_input
         player_input Player1;
         player_input Player2;
     };
+    r32 dtForFrame;
 };
 
 

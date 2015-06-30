@@ -379,6 +379,7 @@ WinMain(HINSTANCE hInstance,
             {
                 // Collect input
                 Win32ProcessPendingMessages(NewInput);
+                NewInput->dtForFrame = TargetMSPF;
 
                 GameUpdateAndRender(NewInput);
 
