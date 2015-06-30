@@ -124,6 +124,16 @@ SquareRoot(r32 Real32)
 
 
 inline r32
+Abs(r32 Value)
+{
+    if (Value >= 0)
+        return Value;
+    else
+        return -Value;
+}
+
+
+inline r32
 V2Length(v2 Vector)
 {
     r32 Result = SquareRoot(Square(Vector.x) + Square(Vector.y));
@@ -136,6 +146,14 @@ DistanceBetween(v2 Dot1, v2 Dot2)
 {
     v2 Diff = Dot2 - Dot1;
     return V2Length(Diff);
+}
+
+
+inline r32
+DotProduct(v2 Vector1, v2 Vector2)
+{
+    r32 Result = Vector1.x * Vector2.x + Vector1.y * Vector2.y;
+    return Result;
 }
 
 
