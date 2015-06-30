@@ -109,6 +109,18 @@ struct entity
     v2 Position;
     v2 Velocity;
     bmp_file Image;
+
+    // tmp
+    v2 Center;
+    int Radius;
+    r32 Mass;
+};
+
+
+struct player
+{
+    entity Entity;
+
 };
 
 

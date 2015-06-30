@@ -63,8 +63,11 @@ UnmaskColor(u32 Pixel, u32 ColorMask)
 
 
 internal void
-DEBUGDrawRectangle(int X, int Y, int Width, int Height, u32 Color)
+DEBUGDrawRectangle(v2 Position, int Width, int Height, u32 Color)
 {
+    int X = (int)Position.x;
+    int Y = (int)Position.y;
+
     int Pitch = GameBackBuffer.Width * GameBackBuffer.BytesPerPixel;
     u8 *Row = (u8 *)GameBackBuffer.Memory + Pitch * Y + X * GameBackBuffer.BytesPerPixel;
 
@@ -74,6 +77,38 @@ DEBUGDrawRectangle(int X, int Y, int Width, int Height, u32 Color)
         for (int pX = X; pX < X + Width; pX++)
         {
             *Pixel++ = Color;
+        }
+        Row += Pitch;
+    }
+}
+
+
+internal void
+DEBUGDrawCircle(v2 Center, int Radius, u32 Color)
+{
+    int X = (int)Center.x - Radius;
+    int Y = (int)Center.y - Radius;
+    int Height = Radius * 2;
+    int Width = Radius * 2;
+    int CenterX = (int)Center.x;
+    int CenterY = (int)Center.y;
+    int RadiusSq = Radius * Radius;
+
+    int Pitch = GameBackBuffer.Width * GameBackBuffer.BytesPerPixel;
+    u8 *Row = (u8 *)GameBackBuffer.Memory + Pitch * Y + X * GameBackBuffer.BytesPerPixel;
+
+    for (int pY = Y; pY < Y + Height; pY++)
+    {
+        int *Pixel = (int *) Row;
+        for (int pX = X; pX < X + Width; pX++)
+        {
+            int nX = CenterX - pX;
+            int nY = CenterY - pY;
+            if ((nX * nX + nY * nY) <= RadiusSq)
+            {
+                *Pixel = Color;
+            }
+            Pixel++;
         }
         Row += Pitch;
     }
@@ -174,12 +209,17 @@ DEBUGReadBMPFile(char *Filename)
 
 
 internal void
-InitEntity(entity *Entity, char *ImgPath, v2 Position, v2 Velocity)
+InitEntity(entity *Entity, char *ImgPath, v2 Position, v2 Velocity,
+           v2 Center, int Radius, r32 Mass)
 {
     bmp_file BMPFile = DEBUGReadBMPFile(ImgPath);
     Entity->Image = BMPFile;
     Entity->Position = Position;
     Entity->Velocity = Velocity;
+
+    Entity->Center = Center;
+    Entity->Radius = Radius;
+    Entity->Mass = Mass;
 }
 
 
@@ -260,23 +300,33 @@ GameUpdateAndRender(game_input *NewInput)
             &Players[0],
             "./img/player_red.bmp",
             {100, 400},
-            {0, 0});
+            {0, 0},
+            {63, 43},
+            34,
+            10);
 
         InitEntity(
             &Players[1],
             "./img/player_black.bmp",
             {600, 400},
-            {0, 0});
+            {0, 0},
+            {63, 43},
+            34,
+            10);
 
         InitEntity(
             Ball,
             "./img/ball.bmp",
             {300, 100},
-            {-0.5f, -0.5f});
+            {0, 0},
+            // {-0.5f, -0.5f},
+            {36, 35},
+            32,
+            2);
     }
 
     // Move and draw image
-    DEBUGDrawRectangle(0, 0, GameBackBuffer.Width, GameBackBuffer.Height, 0x00002222);  // OMG
+    DEBUGDrawRectangle({0, 0}, GameBackBuffer.Width, GameBackBuffer.Height, 0x00002222);  // OMG
 
     // Update players
     {
@@ -290,11 +340,32 @@ GameUpdateAndRender(game_input *NewInput)
         CollideWithWalls(Ball);
     }
 
+    // Ball-players collisions
+    {
+        v2 CollisionNormal = {};
+
+        for (int i = 0; i < COUNT_OF(NewInput->Players); i++)
+        {
+            entity *Player = &Players[i];
+            v2 pCenter = Player->Position + Player->Center;
+            v2 bCenter = Ball->Position + Ball->Center;
+            if (DistanceBetween(pCenter, bCenter) < (Player->Radius + Ball->Radius))
+            {
+                // Collision!
+                CollisionNormal = (bCenter - pCenter) * (1.0f / DistanceBetween(bCenter, pCenter));
+                Ball->Velocity += CollisionNormal;
+                Player->Velocity -= CollisionNormal;
+            }
+        }
+    }
+
     // Draw
     {
         DEBUGDrawImage(Players[0].Position, Players[0].Image);
         DEBUGDrawImage(Players[1].Position, Players[1].Image);
         DEBUGDrawImage(Ball->Position, Ball->Image);
+
+        // DEBUGDrawCircle(Players[0].Position + Players[0].Center, Players[0].Radius, 0x00FFFFFF);
     }
 }
 

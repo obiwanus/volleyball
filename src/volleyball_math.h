@@ -1,6 +1,8 @@
 #ifndef VOLLEyBALL_MATH_H
 #define VOLLEyBALL_MATH_H
 
+#include <math.h>
+
 
 union v2
 {
@@ -16,7 +18,7 @@ union v2
 };
 
 
-inline v2 
+inline v2
 operator*(r32 Scalar, v2 A)
 {
     v2 Result;
@@ -28,7 +30,7 @@ operator*(r32 Scalar, v2 A)
 }
 
 
-inline v2 
+inline v2
 operator*(v2 A, r32 Scalar)
 {
     return Scalar * A;
@@ -96,6 +98,44 @@ operator-(v2 A)
     Result.y = -A.y;
 
     return Result;
+}
+
+
+inline r32
+Square(r32 Real32)
+{
+    return Real32 * Real32;
+}
+
+
+inline int
+Square(int Int)
+{
+    return Int * Int;
+}
+
+
+inline r32
+SquareRoot(r32 Real32)
+{
+    r32 Result = sqrtf(Real32);
+    return Result;
+}
+
+
+inline r32
+V2Length(v2 Vector)
+{
+    r32 Result = SquareRoot(Square(Vector.x) + Square(Vector.y));
+    return Result;
+}
+
+
+inline r32
+DistanceBetween(v2 Dot1, v2 Dot2)
+{
+    v2 Diff = Dot2 - Dot1;
+    return V2Length(Diff);
 }
 
 
