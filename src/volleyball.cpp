@@ -6,6 +6,7 @@ global game_memory GameMemory;
 global game_offscreen_buffer GameBackBuffer;
 
 global entity *Players;
+global entity *Ball;
 
 
 inline int
@@ -173,67 +174,73 @@ DEBUGReadBMPFile(char *Filename)
 
 
 internal void
-InitPlayer(entity *Player, char *ImgPath, v2 Position)
+InitEntity(entity *Entity, char *ImgPath, v2 Position, v2 Velocity)
 {
     bmp_file BMPFile = DEBUGReadBMPFile(ImgPath);
-    Player->Image = BMPFile;
-    Player->Position = Position;
-    Player->Velocity = {};
+    Entity->Image = BMPFile;
+    Entity->Position = Position;
+    Entity->Velocity = Velocity;
+}
+
+
+internal void
+CollideWithWalls(entity *Entity)
+{
+    r32 MinX = 0.0f;
+    r32 MinY = 0.0f;
+    r32 MaxX = (r32)(GameBackBuffer.Width - Entity->Image.Width);
+    r32 MaxY = (r32)(GameBackBuffer.Height - Entity->Image.Height);
+
+    if (Entity->Position.x < MinX)
+    {
+        Entity->Position.x = MinX;
+        Entity->Velocity.x = -Entity->Velocity.x;
+    }
+    if (Entity->Position.y < MinY)
+    {
+        Entity->Position.y = MinY;
+        Entity->Velocity.y = -Entity->Velocity.y;
+    }
+    if (Entity->Position.x > MaxX)
+    {
+        Entity->Position.x = MaxX;
+        Entity->Velocity.x = -Entity->Velocity.x;
+    }
+    if (Entity->Position.y > MaxY)
+    {
+        Entity->Position.y = MaxY;
+        Entity->Velocity.y = -Entity->Velocity.y;
+    }
 }
 
 
 internal void
 UpdatePlayer(entity *Player, player_input *Input, r32 dtForFrame)
 {
-    v2 PlayerDirection = {};
+    v2 Direction = {};
 
     if (Input->Up.EndedDown)
-        PlayerDirection.y -= 1.0f;
+        Direction.y -= 1.0f;
     if (Input->Down.EndedDown)
-        PlayerDirection.y += 1.0f;
+        Direction.y += 1.0f;
     if (Input->Right.EndedDown)
-        PlayerDirection.x += 1.0f;
+        Direction.x += 1.0f;
     if (Input->Left.EndedDown)
-        PlayerDirection.x -= 1.0f;
+        Direction.x -= 1.0f;
 
-    if (PlayerDirection.x != 0 && PlayerDirection.y != 0)
+    if (Direction.x != 0 && Direction.y != 0)
     {
-        PlayerDirection *= 0.70710678118f;
+        Direction *= 0.70710678118f;
     }
 
-    PlayerDirection *= 0.25f;  // speed, px/ms
-    PlayerDirection -= 0.2f * Player->Velocity;  // friction
+    Direction *= 0.25f;  // speed, px/ms
+    Direction -= 0.2f * Player->Velocity;  // friction
 
-    Player->Velocity += PlayerDirection;
+    Player->Velocity += Direction;
 
     Player->Position += Player->Velocity * dtForFrame;
 
-    // Collisions with walls
-    r32 MinX = 0.0f;
-    r32 MinY = 0.0f;
-    r32 MaxX = (r32)(GameBackBuffer.Width - Player->Image.Width);
-    r32 MaxY = (r32)(GameBackBuffer.Height - Player->Image.Height);
-
-    if (Player->Position.x < MinX)
-    {
-        Player->Position.x = MinX;
-        Player->Velocity.x = -Player->Velocity.x;
-    }
-    if (Player->Position.y < MinY)
-    {
-        Player->Position.y = MinY;
-        Player->Velocity.y = -Player->Velocity.y;
-    }
-    if (Player->Position.x > MaxX)
-    {
-        Player->Position.x = MaxX;
-        Player->Velocity.x = -Player->Velocity.x;
-    }
-    if (Player->Position.y > MaxY)
-    {
-        Player->Position.y = MaxY;
-        Player->Velocity.y = -Player->Velocity.y;
-    }
+    CollideWithWalls(Player);
 
     // char Buffer[256];
     // sprintf_s(Buffer, "%.2f, %.2f\n", Player->Position.x, Player->Position.y);
@@ -249,16 +256,25 @@ GameUpdateAndRender(game_input *NewInput)
     if (!Players)
     {
         Players = (entity *)GameMemoryAlloc(sizeof(entity) * 2);  // 2 players
+        Ball = (entity *)GameMemoryAlloc(sizeof(entity) * 2);  // 1 ball
 
-        InitPlayer(
+        InitEntity(
             &Players[0],
             "./img/player_red.bmp",
-            {100, 400});
+            {100, 400},
+            {0, 0});
 
-        InitPlayer(
+        InitEntity(
             &Players[1],
             "./img/player_black.bmp",
-            {400, 400});
+            {600, 400},
+            {0, 0});
+
+        InitEntity(
+            Ball,
+            "./img/ball.bmp",
+            {300, 100},
+            {-0.5f, -0.5f});
     }
 
     // Move and draw image
@@ -267,6 +283,13 @@ GameUpdateAndRender(game_input *NewInput)
     for (int PlayerNum = 0; PlayerNum < COUNT_OF(NewInput->Players); PlayerNum++)
     {
         UpdatePlayer(&Players[PlayerNum], &NewInput->Players[PlayerNum], NewInput->dtForFrame);
+    }
+
+    // Update ball
+    {
+        Ball->Position += Ball->Velocity * NewInput->dtForFrame;
+        CollideWithWalls(Ball);
+        DEBUGDrawImage(Ball->Position, Ball->Image);
     }
 }
 
