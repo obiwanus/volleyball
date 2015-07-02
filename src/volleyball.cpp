@@ -303,7 +303,7 @@ GameUpdateAndRender(game_input *NewInput)
             {0, 0},
             {63, 43},
             34,
-            10);
+            4);
 
         InitEntity(
             &Players[1],
@@ -312,7 +312,7 @@ GameUpdateAndRender(game_input *NewInput)
             {0, 0},
             {63, 43},
             34,
-            10);
+            4);
 
         InitEntity(
             Ball,
@@ -322,7 +322,7 @@ GameUpdateAndRender(game_input *NewInput)
             // {-0.5f, -0.5f},
             {36, 35},
             32,
-            2);
+            10);
     }
 
     // Move and draw image
@@ -341,21 +341,26 @@ GameUpdateAndRender(game_input *NewInput)
     }
 
     // Ball-players collisions
+    for (int i = 0; i < COUNT_OF(NewInput->Players); i++)
     {
-        v2 CollisionNormal = {};
-
-        for (int i = 0; i < COUNT_OF(NewInput->Players); i++)
+        entity *Player = &Players[i];
+        v2 pCenter = Player->Position + Player->Center;
+        v2 bCenter = Ball->Position + Ball->Center;
+        if (DistanceBetween(pCenter, bCenter) < (Player->Radius + Ball->Radius))
         {
-            entity *Player = &Players[i];
-            v2 pCenter = Player->Position + Player->Center;
-            v2 bCenter = Ball->Position + Ball->Center;
-            if (DistanceBetween(pCenter, bCenter) < (Player->Radius + Ball->Radius))
-            {
-                // Collision!
-                CollisionNormal = (bCenter - pCenter) * (1.0f / DistanceBetween(bCenter, pCenter));
-                Ball->Velocity += CollisionNormal;
-                Player->Velocity -= CollisionNormal;
-            }
+            // Collision!
+            v2 CollisionNormal = (bCenter - pCenter) * (1.0f / DistanceBetween(bCenter, pCenter));
+
+            // The components of the velocities collinear with the normal
+            v2 BallComponent = CollisionNormal * DotProduct(Ball->Velocity, CollisionNormal);
+            v2 PlayerComponent = CollisionNormal * DotProduct(Player->Velocity, CollisionNormal);
+            v2 ResultingV = BallComponent - PlayerComponent;
+
+            v2 ResultingBallV = -ResultingV * ((Ball->Mass + Player->Mass) / (2.0f * Ball->Mass));
+            v2 ResultingPlayerV = ResultingV * ((Ball->Mass + Player->Mass) / (2.0f * Player->Mass));
+
+            Ball->Velocity += ResultingBallV - BallComponent;
+            Player->Velocity += ResultingPlayerV - PlayerComponent;
         }
     }
 
