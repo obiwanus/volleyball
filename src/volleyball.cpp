@@ -1,6 +1,9 @@
 #include "volleyball_math.h"
 #include "volleyball.h"
 
+// TODO: delete
+#include <windows.h>
+
 
 global game_memory GameMemory;
 global game_offscreen_buffer GameBackBuffer;
@@ -252,6 +255,7 @@ InitEntity(entity *Entity, char *ImgPath, v2 Position, v2 Velocity,
     Entity->Center = Center;
     Entity->Radius = Radius;
     Entity->Mass = Mass;
+    Entity->NotJumped = true;
 }
 
 
@@ -282,7 +286,22 @@ CollideWithWalls(entity *Entity)
     {
         Entity->Position.y = MaxY;
         Entity->Velocity.y = -Entity->Velocity.y;
+        Entity->NotJumped = true;
     }
+}
+
+
+internal void
+LimitVelocity(entity *Entity, r32 Max)
+{
+    if (Entity->Velocity.x > Max)
+        Entity->Velocity.x = Max;
+    if (Entity->Velocity.x < -Max)
+        Entity->Velocity.x = -Max;
+    if (Entity->Velocity.y > Max)
+        Entity->Velocity.y = Max;
+    if (Entity->Velocity.y < -Max)
+        Entity->Velocity.y = -Max;
 }
 
 
@@ -291,10 +310,8 @@ UpdatePlayer(entity *Player, player_input *Input, r32 dtForFrame)
 {
     v2 Direction = {};
 
-    if (Input->Up.EndedDown)
-        Direction.y -= 1.0f;
-    if (Input->Down.EndedDown)
-        Direction.y += 1.0f;
+    if (Input->Up.EndedDown && Player->NotJumped)
+        Direction.y -= 2.0f;
     if (Input->Right.EndedDown)
         Direction.x += 1.0f;
     if (Input->Left.EndedDown)
@@ -306,16 +323,25 @@ UpdatePlayer(entity *Player, player_input *Input, r32 dtForFrame)
     }
 
     Direction *= 0.25f;  // speed, px/ms
-    Direction -= 0.2f * Player->Velocity;  // friction
+    Direction.x -= 0.2f * Player->Velocity.x;  // friction
+    Direction.y -= 0.05f * Player->Velocity.y;  // friction
 
     Player->Velocity += Direction;
-
+    Player->Velocity.y += 0.1f;  // gravity
     Player->Position += Player->Velocity * dtForFrame;
 
     CollideWithWalls(Player);
 
+    r32 MaxJump = (r32)GameBackBuffer.Height * 0.6f;
+    if (Player->Position.y <= MaxJump)
+    {
+        Player->NotJumped = false;
+    }
+
+    LimitVelocity(Player, 1.0f);
+
     // char Buffer[256];
-    // sprintf_s(Buffer, "%.2f, %.2f\n", Player->Position.x, Player->Position.y);
+    // sprintf_s(Buffer, "%.2f, %.2f\n", Player->Velocity.x, Player->Velocity.y);
     // OutputDebugStringA(Buffer);
 }
 
@@ -327,7 +353,7 @@ DEBUGDrawEntity(entity *Entity)
     v2 ShadowPosition = Entity->Position + Entity->Center;
     ShadowPosition.y = (r32)GameBackBuffer.Height * 0.9f - 5.0f;  // floor
     int Width = Entity->Image.Width -
-                (int)((r32)Entity->Image.Width *
+                (int)((r32)Entity->Image.Width * 0.6f *
                      ((r32)(ShadowPosition.y - Entity->Position.y)) / (r32)GameBackBuffer.Height);
     DEBUGDrawEllipse(ShadowPosition, Width, Width / 5, 0x00111111);
 
@@ -365,7 +391,7 @@ GameUpdateAndRender(game_input *NewInput)
         InitEntity(
             Ball,
             "./img/ball.bmp",
-            {300, 100},
+            {300, 300},
             {0, 0},
             // {-0.5f, -0.5f},
             {36, 35},
@@ -386,6 +412,7 @@ GameUpdateAndRender(game_input *NewInput)
     {
         Ball->Position += Ball->Velocity * NewInput->dtForFrame;
         CollideWithWalls(Ball);
+        LimitVelocity(Ball, 1.0f);
     }
 
     // Ball-players collisions
@@ -404,8 +431,8 @@ GameUpdateAndRender(game_input *NewInput)
             v2 PlayerComponent = CollisionNormal * DotProduct(Player->Velocity, CollisionNormal);
             v2 ResultingV = BallComponent - PlayerComponent;
 
-            v2 ResultingBallV = -ResultingV * ((Ball->Mass + Player->Mass) / (2.0f * Ball->Mass));
-            v2 ResultingPlayerV = ResultingV * ((Ball->Mass + Player->Mass) / (2.0f * Player->Mass));
+            v2 ResultingBallV = -1.0f * ResultingV * ((Ball->Mass + Player->Mass) / (2.0f * Ball->Mass));
+            v2 ResultingPlayerV = 0.5f * ResultingV * ((Ball->Mass + Player->Mass) / (2.0f * Player->Mass));
 
             Ball->Velocity += ResultingBallV - BallComponent;
             Player->Velocity += ResultingPlayerV - PlayerComponent;

@@ -114,6 +114,7 @@ struct entity
     v2 Center;
     int Radius;
     r32 Mass;
+    bool32 NotJumped;
 };
 
 
