@@ -116,6 +116,38 @@ DEBUGDrawCircle(v2 Center, int Radius, u32 Color)
 
 
 internal void
+DEBUGDrawEllipse(v2 Center, int Width, int Height, u32 Color)
+{
+    int X = (int)Center.x - Width / 2;
+    int Y = (int)Center.y - Height / 2;
+    int CenterX = (int)Center.x;
+    int CenterY = (int)Center.y;
+    int HeightSq = Height * Height / 4;
+    int WidthSq = Width * Width / 4;
+    int RadiusSq = HeightSq * WidthSq;
+
+    int Pitch = GameBackBuffer.Width * GameBackBuffer.BytesPerPixel;
+    u8 *Row = (u8 *)GameBackBuffer.Memory + Pitch * Y + X * GameBackBuffer.BytesPerPixel;
+
+    for (int pY = Y; pY < Y + Height; pY++)
+    {
+        int *Pixel = (int *) Row;
+        for (int pX = X; pX < X + Width; pX++)
+        {
+            int nX = CenterX - pX;
+            int nY = CenterY - pY;
+            if ((nX * nX * HeightSq + nY * nY * WidthSq) <= RadiusSq)
+            {
+                *Pixel = Color;
+            }
+            Pixel++;
+        }
+        Row += Pitch;
+    }
+}
+
+
+internal void
 DEBUGDrawImage(v2 Position, bmp_file Image)
 {
     int Width = Image.Width;
@@ -226,10 +258,10 @@ InitEntity(entity *Entity, char *ImgPath, v2 Position, v2 Velocity,
 internal void
 CollideWithWalls(entity *Entity)
 {
-    r32 MinX = 0.0f;
+    r32 MinX = (r32)GameBackBuffer.Width * 0.05f;
     r32 MinY = 0.0f;
-    r32 MaxX = (r32)(GameBackBuffer.Width - Entity->Image.Width);
-    r32 MaxY = (r32)(GameBackBuffer.Height - Entity->Image.Height);
+    r32 MaxX = (r32)GameBackBuffer.Width * 0.95f - (r32)Entity->Image.Width;
+    r32 MaxY = (r32)GameBackBuffer.Height * 0.9f - (r32)Entity->Image.Height;
 
     if (Entity->Position.x < MinX)
     {
@@ -285,6 +317,22 @@ UpdatePlayer(entity *Player, player_input *Input, r32 dtForFrame)
     // char Buffer[256];
     // sprintf_s(Buffer, "%.2f, %.2f\n", Player->Position.x, Player->Position.y);
     // OutputDebugStringA(Buffer);
+}
+
+
+internal void
+DEBUGDrawEntity(entity *Entity)
+{
+    // Draw the shadow
+    v2 ShadowPosition = Entity->Position + Entity->Center;
+    ShadowPosition.y = (r32)GameBackBuffer.Height * 0.9f - 5.0f;  // floor
+    int Width = Entity->Image.Width -
+                (int)((r32)Entity->Image.Width *
+                     ((r32)(ShadowPosition.y - Entity->Position.y)) / (r32)GameBackBuffer.Height);
+    DEBUGDrawEllipse(ShadowPosition, Width, Width / 5, 0x00111111);
+
+    // Draw the entity
+    DEBUGDrawImage(Entity->Position, Entity->Image);
 }
 
 
@@ -366,11 +414,9 @@ GameUpdateAndRender(game_input *NewInput)
 
     // Draw
     {
-        DEBUGDrawImage(Players[0].Position, Players[0].Image);
-        DEBUGDrawImage(Players[1].Position, Players[1].Image);
-        DEBUGDrawImage(Ball->Position, Ball->Image);
-
-        // DEBUGDrawCircle(Players[0].Position + Players[0].Center, Players[0].Radius, 0x00FFFFFF);
+        DEBUGDrawEntity(&Players[0]);
+        DEBUGDrawEntity(&Players[1]);
+        DEBUGDrawEntity(Ball);
     }
 }
 
