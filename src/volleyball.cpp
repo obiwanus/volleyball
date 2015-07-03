@@ -298,20 +298,20 @@ GameUpdateAndRender(game_input *NewInput)
 
         InitEntity(
             &Players[0],
-            "./img/player_red.bmp",
+            "./img/player.bmp",
             {100, 400},
             {0, 0},
-            {63, 43},
-            34,
+            {64, 69},
+            60,
             4);
 
         InitEntity(
             &Players[1],
-            "./img/player_black.bmp",
+            "./img/player.bmp",
             {600, 400},
             {0, 0},
-            {63, 43},
-            34,
+            {64, 69},
+            60,
             4);
 
         InitEntity(
