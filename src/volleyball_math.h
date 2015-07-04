@@ -1,5 +1,5 @@
-#ifndef VOLLEyBALL_MATH_H
-#define VOLLEyBALL_MATH_H
+#ifndef VOLLEYBALL_MATH_H
+#define VOLLEYBALL_MATH_H
 
 #include <math.h>
 

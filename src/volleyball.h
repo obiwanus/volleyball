@@ -1,6 +1,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "volleyball_platform.h"
+#include "volleyball_math.h"
+
 
 struct game_memory
 {
@@ -135,4 +138,9 @@ struct file_read_result
 // Platform functions
 file_read_result DEBUGPlatformReadEntireFile(char *Filename);
 void *DEBUGPlatformWriteEntireFile(char *Filename, int FileSize, void *Memory);
+
+
+// Game functions
+void *GameMemoryAlloc(int SizeInBytes);
+void GameUpdateAndRender(game_input *NewInput, game_offscreen_buffer *Buffer, game_memory *Memory);
 

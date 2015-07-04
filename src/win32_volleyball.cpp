@@ -1,6 +1,6 @@
 #include "volleyball_platform.h"
-#include "volleyball.cpp"
 
+#include "volleyball.h"
 #include <windows.h>
 #include <intrin.h>
 
@@ -10,6 +10,9 @@ global bool GlobalRunning;
 
 global BITMAPINFO GlobalBitmapInfo;
 global LARGE_INTEGER GlobalPerformanceFrequency;
+
+global game_memory GameMemory;
+global game_offscreen_buffer GameBackBuffer;
 
 
 file_read_result
@@ -381,7 +384,7 @@ WinMain(HINSTANCE hInstance,
                 Win32ProcessPendingMessages(NewInput);
                 NewInput->dtForFrame = TargetMSPF;
 
-                GameUpdateAndRender(NewInput);
+                GameUpdateAndRender(NewInput, &GameBackBuffer, &GameMemory);
 
                 // Swap inputs
                 game_input *TmpInput = OldInput;

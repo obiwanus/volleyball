@@ -1,12 +1,12 @@
-#include "volleyball_math.h"
 #include "volleyball.h"
 
 // TODO: delete
 #include <windows.h>
 
 
-global game_memory GameMemory;
-global game_offscreen_buffer GameBackBuffer;
+// These are saved as global vars on the first call of GameUpdateAndRender
+global game_offscreen_buffer *GameBackBuffer;
+global game_memory *GameMemory;
 
 global entity *Players;
 global entity *Ball;
@@ -28,14 +28,14 @@ RoundReal32(r32 Value)
 }
 
 
-internal void *
+void *
 GameMemoryAlloc(int SizeInBytes)
 {
-    void *Result = GameMemory.Free;
+    void *Result = GameMemory->Free;
 
-    GameMemory.Free = (void *)((u8 *)GameMemory.Free + SizeInBytes);
-    i64 CurrentSize = ((u8 *)GameMemory.Free - (u8 *) GameMemory.Start);
-    Assert(CurrentSize < GameMemory.MemorySize);
+    GameMemory->Free = (void *)((u8 *)GameMemory->Free + SizeInBytes);
+    i64 CurrentSize = ((u8 *)GameMemory->Free - (u8 *) GameMemory->Start);
+    Assert(CurrentSize < GameMemory->MemorySize);
 
     return Result;
 }
@@ -71,8 +71,8 @@ DEBUGDrawRectangle(v2 Position, int Width, int Height, u32 Color)
     int X = (int)Position.x;
     int Y = (int)Position.y;
 
-    int Pitch = GameBackBuffer.Width * GameBackBuffer.BytesPerPixel;
-    u8 *Row = (u8 *)GameBackBuffer.Memory + Pitch * Y + X * GameBackBuffer.BytesPerPixel;
+    int Pitch = GameBackBuffer->Width * GameBackBuffer->BytesPerPixel;
+    u8 *Row = (u8 *)GameBackBuffer->Memory + Pitch * Y + X * GameBackBuffer->BytesPerPixel;
 
     for (int pY = Y; pY < Y + Height; pY++)
     {
@@ -97,8 +97,8 @@ DEBUGDrawCircle(v2 Center, int Radius, u32 Color)
     int CenterY = (int)Center.y;
     int RadiusSq = Radius * Radius;
 
-    int Pitch = GameBackBuffer.Width * GameBackBuffer.BytesPerPixel;
-    u8 *Row = (u8 *)GameBackBuffer.Memory + Pitch * Y + X * GameBackBuffer.BytesPerPixel;
+    int Pitch = GameBackBuffer->Width * GameBackBuffer->BytesPerPixel;
+    u8 *Row = (u8 *)GameBackBuffer->Memory + Pitch * Y + X * GameBackBuffer->BytesPerPixel;
 
     for (int pY = Y; pY < Y + Height; pY++)
     {
@@ -129,8 +129,8 @@ DEBUGDrawEllipse(v2 Center, int Width, int Height, u32 Color)
     int WidthSq = Width * Width / 4;
     int RadiusSq = HeightSq * WidthSq;
 
-    int Pitch = GameBackBuffer.Width * GameBackBuffer.BytesPerPixel;
-    u8 *Row = (u8 *)GameBackBuffer.Memory + Pitch * Y + X * GameBackBuffer.BytesPerPixel;
+    int Pitch = GameBackBuffer->Width * GameBackBuffer->BytesPerPixel;
+    u8 *Row = (u8 *)GameBackBuffer->Memory + Pitch * Y + X * GameBackBuffer->BytesPerPixel;
 
     for (int pY = Y; pY < Y + Height; pY++)
     {
@@ -158,8 +158,8 @@ DEBUGDrawImage(v2 Position, bmp_file Image)
     int X = (int)Position.x;
     int Y = (int)Position.y;
 
-    int Pitch = GameBackBuffer.Width * GameBackBuffer.BytesPerPixel;
-    u8 *Row = (u8 *)GameBackBuffer.Memory + Pitch * Y + X * GameBackBuffer.BytesPerPixel;
+    int Pitch = GameBackBuffer->Width * GameBackBuffer->BytesPerPixel;
+    u8 *Row = (u8 *)GameBackBuffer->Memory + Pitch * Y + X * GameBackBuffer->BytesPerPixel;
     u32 *SrcRow = (u32 *)Image.Bitmap + Height * Width - Width;  // bottom row first
 
     for (int pY = Y; pY < Y + Height; pY++)
@@ -262,10 +262,10 @@ InitEntity(entity *Entity, char *ImgPath, v2 Position, v2 Velocity,
 internal void
 CollideWithWalls(entity *Entity)
 {
-    r32 MinX = (r32)GameBackBuffer.Width * 0.05f;
+    r32 MinX = (r32)GameBackBuffer->Width * 0.05f;
     r32 MinY = 0.0f;
-    r32 MaxX = (r32)GameBackBuffer.Width * 0.95f - (r32)Entity->Image.Width;
-    r32 MaxY = (r32)GameBackBuffer.Height * 0.9f - (r32)Entity->Image.Height;
+    r32 MaxX = (r32)GameBackBuffer->Width * 0.95f - (r32)Entity->Image.Width;
+    r32 MaxY = (r32)GameBackBuffer->Height * 0.9f - (r32)Entity->Image.Height;
 
     if (Entity->Position.x < MinX)
     {
@@ -332,7 +332,7 @@ UpdatePlayer(entity *Player, player_input *Input, r32 dtForFrame)
 
     CollideWithWalls(Player);
 
-    r32 MaxJump = (r32)GameBackBuffer.Height * 0.6f;
+    r32 MaxJump = (r32)GameBackBuffer->Height * 0.6f;
     if (Player->Position.y <= MaxJump)
     {
         Player->NotJumped = false;
@@ -351,10 +351,10 @@ DEBUGDrawEntity(entity *Entity)
 {
     // Draw the shadow
     v2 ShadowPosition = Entity->Position + Entity->Center;
-    ShadowPosition.y = (r32)GameBackBuffer.Height * 0.9f - 5.0f;  // floor
+    ShadowPosition.y = (r32)GameBackBuffer->Height * 0.9f - 5.0f;  // floor
     int Width = Entity->Image.Width -
                 (int)((r32)Entity->Image.Width * 0.6f *
-                     ((r32)(ShadowPosition.y - Entity->Position.y)) / (r32)GameBackBuffer.Height);
+                     ((r32)(ShadowPosition.y - Entity->Position.y)) / (r32)GameBackBuffer->Height);
     DEBUGDrawEllipse(ShadowPosition, Width, Width / 5, 0x00111111);
 
     // Draw the entity
@@ -362,9 +362,13 @@ DEBUGDrawEntity(entity *Entity)
 }
 
 
-internal void
-GameUpdateAndRender(game_input *NewInput)
+void
+GameUpdateAndRender(game_input *NewInput, game_offscreen_buffer *Buffer, game_memory *Memory)
 {
+    // Update global vars
+    GameBackBuffer = Buffer;
+    GameMemory = Memory;
+
     if (!Players)
     {
         Players = (entity *)GameMemoryAlloc(sizeof(entity) * 2);  // 2 players
@@ -400,7 +404,7 @@ GameUpdateAndRender(game_input *NewInput)
     }
 
     // Move and draw image
-    DEBUGDrawRectangle({0, 0}, GameBackBuffer.Width, GameBackBuffer.Height, 0x00002222);  // OMG
+    DEBUGDrawRectangle({0, 0}, GameBackBuffer->Width, GameBackBuffer->Height, 0x00002222);  // OMG
 
     // Update players
     {
