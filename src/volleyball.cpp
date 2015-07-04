@@ -220,7 +220,7 @@ internal bmp_file
 DEBUGReadBMPFile(char *Filename)
 {
     bmp_file Result = {};
-    file_read_result FileReadResult = DEBUGPlatformReadEntireFile(Filename);
+    file_read_result FileReadResult = GameMemory->DEBUGPlatformReadEntireFile(Filename);
 
     bmp_file_header *BMPFileHeader = (bmp_file_header *)FileReadResult.Memory;
     bmp_info_header *BMPInfoHeader = (bmp_info_header *)((u8 *)FileReadResult.Memory
@@ -362,8 +362,7 @@ DEBUGDrawEntity(entity *Entity)
 }
 
 
-void
-GameUpdateAndRender(game_input *NewInput, game_offscreen_buffer *Buffer, game_memory *Memory)
+extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
     // Update global vars
     GameBackBuffer = Buffer;

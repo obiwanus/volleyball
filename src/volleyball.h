@@ -5,15 +5,6 @@
 #include "volleyball_math.h"
 
 
-struct game_memory
-{
-    int MemorySize;
-    bool32 IsInitialized;
-    void *Start;
-    void *Free;
-};
-
-
 struct game_offscreen_buffer
 {
     void *Memory;
@@ -136,11 +127,33 @@ struct file_read_result
 
 
 // Platform functions
-file_read_result DEBUGPlatformReadEntireFile(char *Filename);
-void *DEBUGPlatformWriteEntireFile(char *Filename, int FileSize, void *Memory);
+
+#define DEBUG_PLATFORM_READ_ENTIRE_FILE(name) file_read_result name(char *Filename)
+typedef DEBUG_PLATFORM_READ_ENTIRE_FILE(debug_platform_read_entire_file);
+
+#define DEBUG_PLATFORM_WRITE_ENTIRE_FILE(name) void name(char *Filename, int FileSize, void *Memory)
+typedef DEBUG_PLATFORM_WRITE_ENTIRE_FILE(debug_platform_write_entire_file);
+
+
+struct game_memory
+{
+    int MemorySize;
+    bool32 IsInitialized;
+    void *Start;
+    void *Free;
+
+    // Debug functions
+    debug_platform_read_entire_file *DEBUGPlatformReadEntireFile;
+    debug_platform_write_entire_file *DEBUGPlatformWriteEntireFile;
+};
 
 
 // Game functions
-void *GameMemoryAlloc(int SizeInBytes);
-void GameUpdateAndRender(game_input *NewInput, game_offscreen_buffer *Buffer, game_memory *Memory);
+
+#define GAME_UPDATE_AND_RENDER(name) void name(game_input *NewInput, game_offscreen_buffer *Buffer, game_memory *Memory)
+typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
+GAME_UPDATE_AND_RENDER(GameUpdateAndRenderStub)
+{
+    // nothing
+}
 

@@ -15,8 +15,7 @@ global game_memory GameMemory;
 global game_offscreen_buffer GameBackBuffer;
 
 
-file_read_result
-DEBUGPlatformReadEntireFile(char *Filename)
+DEBUG_PLATFORM_READ_ENTIRE_FILE(DEBUGPlatformReadEntireFile)
 {
     file_read_result Result = {};
 
@@ -182,6 +181,30 @@ Win32WindowProc(
 }
 
 
+struct win32_game_code
+{
+    HMODULE GameCodeDLL;
+    game_update_and_render *UpdateAndRender;
+};
+
+
+internal win32_game_code
+Win32LoadGameCode(void)
+{
+    win32_game_code Result = {};
+    Result.UpdateAndRender = GameUpdateAndRenderStub;
+
+    Result.GameCodeDLL = LoadLibraryA("volleyball.dll");
+    if (Result.GameCodeDLL)
+    {
+        Result.UpdateAndRender = (game_update_and_render *)
+            GetProcAddress(Result.GameCodeDLL, "GameUpdateAndRender");
+    }
+
+    return Result;
+}
+
+
 internal void
 Win32ProcessKeyboardMessage(game_button_state *NewState, bool32 IsDown)
 {
@@ -284,6 +307,8 @@ WinMain(HINSTANCE hInstance,
         LPSTR lpCmdLine,
         int nCmdShow)
 {
+    win32_game_code Game = Win32LoadGameCode();
+
     WNDCLASS WindowClass = {};
     WindowClass.style = CS_OWNDC|CS_VREDRAW|CS_HREDRAW;
     WindowClass.lpfnWndProc = Win32WindowProc;
@@ -349,9 +374,12 @@ WinMain(HINSTANCE hInstance,
             {
                 GameMemory.MemorySize = 1024 * 1024 * 1024;  // 1 Gigabyte
                 GameMemory.Start = VirtualAlloc(0, GameMemory.MemorySize, MEM_COMMIT, PAGE_READWRITE);
-                SecureZeroMemory(GameMemory.Start, GameMemory.MemorySize);
+                // SecureZeroMemory(GameMemory.Start, GameMemory.MemorySize);
                 GameMemory.Free = GameMemory.Start;
                 GameMemory.IsInitialized = true;
+
+                GameMemory.DEBUGPlatformReadEntireFile = DEBUGPlatformReadEntireFile;
+                // GameMemory.DEBUGPlatformWriteEntireFile = DEBUGPlatformWriteEntireFile;
             }
 
             // Init backbuffer
@@ -362,7 +390,8 @@ WinMain(HINSTANCE hInstance,
 
                 int BufferSize = GameBackBuffer.MaxWidth * GameBackBuffer.MaxHeight
                                   * GameBackBuffer.BytesPerPixel;
-                GameBackBuffer.Memory = GameMemoryAlloc(BufferSize);
+                // TODO: put it into the game memory?
+                GameBackBuffer.Memory = VirtualAlloc(0, BufferSize, MEM_COMMIT, PAGE_READWRITE);
 
                 GlobalBitmapInfo.bmiHeader.biSize = sizeof(GlobalBitmapInfo.bmiHeader);
                 GlobalBitmapInfo.bmiHeader.biPlanes = 1;
@@ -374,8 +403,9 @@ WinMain(HINSTANCE hInstance,
             }
 
             // Get space for inputs
-            game_input *OldInput = (game_input *) GameMemoryAlloc(sizeof(game_input));
-            game_input *NewInput = (game_input *) GameMemoryAlloc(sizeof(game_input));;
+            game_input Input[2];
+            game_input *OldInput = &Input[0];
+            game_input *NewInput = &Input[1];
 
             // Main loop
             while (GlobalRunning)
@@ -384,7 +414,7 @@ WinMain(HINSTANCE hInstance,
                 Win32ProcessPendingMessages(NewInput);
                 NewInput->dtForFrame = TargetMSPF;
 
-                GameUpdateAndRender(NewInput, &GameBackBuffer, &GameMemory);
+                Game.UpdateAndRender(NewInput, &GameBackBuffer, &GameMemory);
 
                 // Swap inputs
                 game_input *TmpInput = OldInput;

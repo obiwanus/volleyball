@@ -19,7 +19,7 @@ REM 32-bit build
 REM cl %CommonCompilerFlags% ..\volleyball\src\win32_volleyball.cpp /link -subsystem:windows,5.1 %CommonLinkerFlags%
 
 REM 64-bit build
-cl %CommonCompilerFlags% ..\volleyball\src\volleyball.cpp -LD /link -incremental:no -PDB:volleyball_%random%.pdb /EXPORT:GameUpdateAndRender /EXPORT:GameMemoryAlloc
+cl %CommonCompilerFlags% ..\volleyball\src\volleyball.cpp -LD /link -incremental:no -PDB:volleyball_%random%.pdb /EXPORT:GameUpdateAndRender
 cl %CommonCompilerFlags% ..\volleyball\src\win32_volleyball.cpp /link %CommonLinkerFlags%
 
 popd
