@@ -327,12 +327,18 @@ UpdatePlayer(entity *Player, player_input *Input, r32 dtForFrame)
     Direction.y -= 0.05f * Player->Velocity.y;  // friction
 
     Player->Velocity += Direction;
-    Player->Velocity.y += 0.1f;  // gravity
+
+    r32 FloorY = (r32)GameBackBuffer->Height * 0.9f - (r32)Player->Image.Height;
+    if (Player->Position.y <= FloorY)
+    {
+        Player->Velocity.y += 0.1f;  // gravity
+    }
+
     Player->Position += Player->Velocity * dtForFrame;
 
     CollideWithWalls(Player);
 
-    r32 MaxJump = (r32)GameBackBuffer->Height * 0.6f;
+    r32 MaxJump = (r32)GameBackBuffer->Height * 0.5f;
     if (Player->Position.y <= MaxJump)
     {
         Player->NotJumped = false;
@@ -414,11 +420,14 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // Update ball
     {
         Ball->Position += Ball->Velocity * NewInput->dtForFrame;
+        Ball->Velocity.y += 0.005f;
         CollideWithWalls(Ball);
         LimitVelocity(Ball, 1.0f);
     }
 
     // Ball-players collisions
+
+    // TODO: don't allow intersections at all?
     for (int i = 0; i < COUNT_OF(NewInput->Players); i++)
     {
         entity *Player = &Players[i];

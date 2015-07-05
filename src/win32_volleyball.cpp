@@ -181,24 +181,79 @@ Win32WindowProc(
 }
 
 
-struct win32_game_code
+#define GAME_CODE_DLL_FILENAME "volleyball.dll"
+
+
+internal void
+Win32GetExeDir(char *PathToExe)
 {
-    HMODULE GameCodeDLL;
-    game_update_and_render *UpdateAndRender;
-};
+    GetModuleFileName(0, PathToExe, MAX_PATH);
+
+    // Cut the file name
+    char *OnePastLastSlash = PathToExe;
+    for (char *Scan = PathToExe; *Scan; Scan++)
+    {
+        if (*Scan == '\\')
+        {
+            OnePastLastSlash = Scan + 1;
+        }
+    }
+    *OnePastLastSlash = 0;
+}
+
+
+internal FILETIME
+Win32GetDLLWriteTime()
+{
+    FILETIME Result = {};
+    WIN32_FIND_DATA FileData = {};
+
+    char ExeDir[MAX_PATH];
+    Win32GetExeDir(ExeDir);
+    char PathToDLL[MAX_PATH];
+    sprintf_s(PathToDLL, "%s%s", ExeDir, GAME_CODE_DLL_FILENAME);
+
+    HANDLE FileFindHandle = FindFirstFile(PathToDLL, &FileData);
+    if (FileFindHandle != INVALID_HANDLE_VALUE)
+    {
+        Result = FileData.ftLastWriteTime;
+    }
+    return Result;
+}
+
+
+internal void
+Win32UnloadGameCode(win32_game_code *GameCode)
+{
+    GameCode->UpdateAndRender = GameUpdateAndRenderStub;
+    FreeLibrary(GameCode->GameCodeDLL);
+    GameCode->IsValid = false;
+}
 
 
 internal win32_game_code
-Win32LoadGameCode(void)
+Win32LoadGameCode()
 {
     win32_game_code Result = {};
     Result.UpdateAndRender = GameUpdateAndRenderStub;
 
-    Result.GameCodeDLL = LoadLibraryA("volleyball.dll");
+    char ExeDir[MAX_PATH];
+    char PathToDLL[MAX_PATH];
+    char TmpDLLFile[MAX_PATH];
+    Win32GetExeDir(ExeDir);
+    sprintf_s(PathToDLL, "%s%s", ExeDir, GAME_CODE_DLL_FILENAME);
+    sprintf_s(TmpDLLFile, "%s%s", ExeDir, "volleyball_tmp.dll");
+    CopyFile(PathToDLL, TmpDLLFile, FALSE);
+
+    Result.GameCodeDLL = LoadLibraryA(TmpDLLFile);
     if (Result.GameCodeDLL)
     {
         Result.UpdateAndRender = (game_update_and_render *)
             GetProcAddress(Result.GameCodeDLL, "GameUpdateAndRender");
+        if (Result.UpdateAndRender)
+        {
+            Result.IsValid = true;
+        }
     }
 
     return Result;
@@ -308,6 +363,7 @@ WinMain(HINSTANCE hInstance,
         int nCmdShow)
 {
     win32_game_code Game = Win32LoadGameCode();
+    Assert(Game.IsValid);
 
     WNDCLASS WindowClass = {};
     WindowClass.style = CS_OWNDC|CS_VREDRAW|CS_HREDRAW;
@@ -407,9 +463,20 @@ WinMain(HINSTANCE hInstance,
             game_input *OldInput = &Input[0];
             game_input *NewInput = &Input[1];
 
+            FILETIME LastDLLWriteTime = Win32GetDLLWriteTime();
+
             // Main loop
             while (GlobalRunning)
             {
+                FILETIME NewDLLWriteTime = Win32GetDLLWriteTime();
+                int CMP = CompareFileTime(&LastDLLWriteTime, &NewDLLWriteTime);
+                if (CMP != 0)
+                {
+                    Win32UnloadGameCode(&Game);
+                    Game = Win32LoadGameCode();
+                    LastDLLWriteTime = NewDLLWriteTime;
+                }
+
                 // Collect input
                 Win32ProcessPendingMessages(NewInput);
                 NewInput->dtForFrame = TargetMSPF;

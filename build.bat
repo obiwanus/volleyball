@@ -13,7 +13,7 @@ IF NOT EXIST ..\build mkdir ..\build
 pushd ..\build
 
 @del /Q *.pdb > NUL 2> NUL
-@del /Q *.hmi > NUL 2> NUL
+@del /Q *.gmi > NUL 2> NUL
 
 REM 32-bit build
 REM cl %CommonCompilerFlags% ..\volleyball\src\win32_volleyball.cpp /link -subsystem:windows,5.1 %CommonLinkerFlags%
