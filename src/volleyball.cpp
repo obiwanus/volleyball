@@ -76,12 +76,50 @@ DEBUGDrawRectangle(v2 Position, int Width, int Height, u32 Color)
 
     for (int pY = Y; pY < Y + Height; pY++)
     {
-        int *Pixel = (int *) Row;
+        u32 *Pixel = (u32 *) Row;
         for (int pX = X; pX < X + Width; pX++)
         {
             *Pixel++ = Color;
         }
         Row += Pitch;
+    }
+}
+
+
+inline void
+SetPixel(int X, int Y, u32 Color)
+{
+    int Pitch = GameBackBuffer->Width * GameBackBuffer->BytesPerPixel;
+    u8 *Row = (u8 *)GameBackBuffer->Memory + Pitch * Y + X * GameBackBuffer->BytesPerPixel;
+    u32 *Pixel = (u32 *)Row;
+    *Pixel = Color;
+}
+
+
+internal void
+DrawLine(v2 Start, v2 End, u32 Color)
+{
+    // Bresenham's algorithm
+    r32 DeltaX = End.x - Start.x;
+    r32 DeltaY = End.y - Start.y;
+    r32 DeltaErr = Abs(DeltaY / DeltaX);
+    int SignX = (DeltaX < 0) ? -1: 1;
+    int SignY = (DeltaY < 0) ? -1: 1;
+
+    int X = (int)Start.x;
+    int Y = (int)Start.y;
+    r32 Error = 0;
+    while (X != End.x)
+    {
+        SetPixel(X, Y, Color);
+        X += SignX;
+        Error += DeltaErr;
+        while (Error >= 0.5f)
+        {
+            SetPixel(X, Y, Color);
+            Y += SignY;
+            Error -= 1.0f;
+        }
     }
 }
 
@@ -329,7 +367,7 @@ UpdatePlayer(entity *Player, player_input *Input, r32 dtForFrame)
     Player->Velocity += Direction;
 
     r32 FloorY = (r32)GameBackBuffer->Height * 0.9f - (r32)Player->Image.Height;
-    if (Player->Position.y <= FloorY)
+    if (Player->Position.y <= (FloorY - Player->Image.Height / 2))
     {
         Player->Velocity.y += 0.1f;  // gravity
     }
@@ -451,7 +489,12 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         }
     }
 
-    // Draw
+    // Draw background
+    {
+        DrawLine({0, 0}, {100, 100}, 0x00FF0000);
+    }
+
+    // Draw moving objects
     {
         DEBUGDrawEntity(&Players[0]);
         DEBUGDrawEntity(&Players[1]);
