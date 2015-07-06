@@ -462,6 +462,7 @@ WinMain(HINSTANCE hInstance,
             game_input Input[2];
             game_input *OldInput = &Input[0];
             game_input *NewInput = &Input[1];
+            *NewInput = {};
 
             FILETIME LastDLLWriteTime = Win32GetDLLWriteTime();
 

@@ -97,30 +97,42 @@ SetPixel(int X, int Y, u32 Color)
 
 
 internal void
-DrawLine(v2 Start, v2 End, u32 Color)
+DrawLine(r32 StartX, r32 StartY, r32 EndX, r32 EndY, u32 Color)
 {
     // Bresenham's algorithm
-    r32 DeltaX = End.x - Start.x;
-    r32 DeltaY = End.y - Start.y;
-    r32 DeltaErr = Abs(DeltaY / DeltaX);
+    r32 DeltaX = EndX - StartX;
+    r32 DeltaY = EndY - StartY;
     int SignX = (DeltaX < 0) ? -1: 1;
     int SignY = (DeltaY < 0) ? -1: 1;
-
-    int X = (int)Start.x;
-    int Y = (int)Start.y;
+    int X = (int)StartX;
+    int Y = (int)StartY;
     r32 Error = 0;
-    while (X != End.x)
+
+    if (DeltaX)
     {
-        SetPixel(X, Y, Color);
-        X += SignX;
-        Error += DeltaErr;
-        while (Error >= 0.5f)
+        r32 DeltaErr = Abs(DeltaY / DeltaX);
+        while (X != (int)EndX)
+        {
+            SetPixel(X, Y, Color);
+            X += SignX;
+            Error += DeltaErr;
+            while (Error >= 0.5f)
+            {
+                SetPixel(X, Y, Color);
+                Y += SignY;
+                Error -= 1.0f;
+            }
+        }
+    }
+    else if (DeltaY)
+    {
+        while (Y != (int)EndY)
         {
             SetPixel(X, Y, Color);
             Y += SignY;
-            Error -= 1.0f;
         }
     }
+
 }
 
 
@@ -303,7 +315,7 @@ CollideWithWalls(entity *Entity)
     r32 MinX = (r32)GameBackBuffer->Width * 0.05f;
     r32 MinY = 0.0f;
     r32 MaxX = (r32)GameBackBuffer->Width * 0.95f - (r32)Entity->Image.Width;
-    r32 MaxY = (r32)GameBackBuffer->Height * 0.9f - (r32)Entity->Image.Height;
+    r32 MaxY = (r32)GameBackBuffer->Height * 0.95f - (r32)Entity->Image.Height;
 
     if (Entity->Position.x < MinX)
     {
@@ -366,7 +378,7 @@ UpdatePlayer(entity *Player, player_input *Input, r32 dtForFrame)
 
     Player->Velocity += Direction;
 
-    r32 FloorY = (r32)GameBackBuffer->Height * 0.9f - (r32)Player->Image.Height;
+    r32 FloorY = (r32)GameBackBuffer->Height * 0.95f - (r32)Player->Image.Height;
     if (Player->Position.y <= (FloorY - Player->Image.Height / 2))
     {
         Player->Velocity.y += 0.1f;  // gravity
@@ -395,7 +407,7 @@ DEBUGDrawEntity(entity *Entity)
 {
     // Draw the shadow
     v2 ShadowPosition = Entity->Position + Entity->Center;
-    ShadowPosition.y = (r32)GameBackBuffer->Height * 0.9f - 5.0f;  // floor
+    ShadowPosition.y = (r32)GameBackBuffer->Height * 0.95f - 5.0f;  // floor
     int Width = Entity->Image.Width -
                 (int)((r32)Entity->Image.Width * 0.6f *
                      ((r32)(ShadowPosition.y - Entity->Position.y)) / (r32)GameBackBuffer->Height);
@@ -491,7 +503,31 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     // Draw background
     {
-        DrawLine({0, 0}, {100, 100}, 0x00FF0000);
+        r32 Width = (r32)GameBackBuffer->Width;
+        r32 Height = (r32)GameBackBuffer->Height;
+        r32 Bottom = Height;
+        r32 Right = Width;
+        u32 Color = 0x00001111;
+
+        DrawLine(0, Bottom, 0.1f * Width, 0.9f * Height, Color);
+        DrawLine(Right, Bottom, 0.9f * Width, 0.9f * Height, Color);
+        DrawLine(0.1f * Width, 0.9f * Height, 0.9f * Width, 0.9f * Height, Color);
+        DrawLine(0.9f * Width, 0, 0.9f * Width, 0.9f * Height, Color);
+        DrawLine(0.1f * Width, 0.9f * Height, 0.1f * Width, 0, Color);
+
+        // The net
+        int NetWidth = 26;
+        r32 NetHeight = 0.5f;  // percent
+        int CenterX = (int)Width / 2;
+        v2 LeftCorner = {(r32)(CenterX - NetWidth / 2), Bottom - NetHeight * Height};
+        DEBUGDrawRectangle(LeftCorner, NetWidth, (int)(NetHeight * Height), Color);
+        int X1, X2, Y;  // the furthermost points of the net
+        Y = (int)LeftCorner.y - (int)(0.1f * Height / 3.0f);
+        X1 = (int)LeftCorner.x + (NetWidth / 3);
+        X2 = (int)LeftCorner.x + NetWidth - (NetWidth / 3);
+        DrawLine(LeftCorner.x, LeftCorner.y, (r32)X1, (r32)Y, Color);
+        DrawLine(LeftCorner.x + NetWidth, LeftCorner.y, (r32)X2, (r32)Y, Color);
+        DrawLine((r32)X1, (r32)Y, (r32)X2, (r32)Y, Color);
     }
 
     // Draw moving objects
