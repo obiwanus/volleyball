@@ -418,6 +418,18 @@ DEBUGDrawEntity(entity *Entity)
 }
 
 
+internal bool32
+Collides(v2 Center, int Radius, v2 RectCorner, int RectWidth, int RectHeight)
+{
+    // Detects collisions betweer a ball and a rect
+    if ((Center.x - (r32)Radius) > (RectCorner.x + (r32)RectWidth)) return false;
+    if ((Center.x + (r32)Radius) < RectCorner.x) return false;
+    if ((Center.y + (r32)Radius) < RectCorner.y) return false;
+
+    return true;
+}
+
+
 extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
     // Update global vars
@@ -470,7 +482,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // Update ball
     {
         Ball->Position += Ball->Velocity * NewInput->dtForFrame;
-        Ball->Velocity.y += 0.005f;
+        Ball->Velocity.y += 0.01f;
         CollideWithWalls(Ball);
         LimitVelocity(Ball, 1.0f);
     }
@@ -501,12 +513,56 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         }
     }
 
+    // Collisions with the net
+    int NetWidth = 26;
+    r32 NetHeight = 0.5f;  // percent
+    r32 Width = (r32)GameBackBuffer->Width;
+    r32 Height = (r32)GameBackBuffer->Height;
+    r32 Bottom = Height;
+    r32 Right = Width;
+    int CenterX = (int)Width / 2;
+    {
+        int RealHeight = (int)(Height * NetHeight + 0.1f * Height / 6.0f);
+        v2 LeftCorner = {(r32)(CenterX - NetWidth / 2), (r32)((int)Bottom - RealHeight)};  // for collisions
+
+        // Ball
+        v2 BallCenter = Ball->Position + Ball->Center;
+        if (Collides(BallCenter, Ball->Radius, LeftCorner, NetWidth, RealHeight))
+        {
+            if ((BallCenter.y + (Ball->Radius / 2.0f)) <= LeftCorner.y)
+            {
+                Ball->Velocity.y = -Ball->Velocity.y;
+            }
+            else
+            {
+                Ball->Velocity.x = -Ball->Velocity.x;
+            }
+        }
+
+        // Players
+        for (int i = 0; i < COUNT_OF(NewInput->Players); i++)
+        {
+            entity *Player = &Players[i];
+            v2 pCenter = Player->Position + Player->Center;
+
+            if (Collides(pCenter, Player->Radius, LeftCorner, NetWidth, RealHeight))
+            {
+                Player->Velocity.x = -Player->Velocity.x;
+                if (pCenter.x < LeftCorner.x)
+                {
+                    Player->Position.x = LeftCorner.x - (r32)Player->Radius * 2.0f;
+                }
+                else
+                {
+                    Player->Position.x = LeftCorner.x + (r32)NetWidth;
+                }
+            }
+        }
+
+    }
+
     // Draw background
     {
-        r32 Width = (r32)GameBackBuffer->Width;
-        r32 Height = (r32)GameBackBuffer->Height;
-        r32 Bottom = Height;
-        r32 Right = Width;
         u32 Color = 0x00001111;
 
         DrawLine(0, Bottom, 0.1f * Width, 0.9f * Height, Color);
@@ -516,9 +572,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         DrawLine(0.1f * Width, 0.9f * Height, 0.1f * Width, 0, Color);
 
         // The net
-        int NetWidth = 26;
-        r32 NetHeight = 0.5f;  // percent
-        int CenterX = (int)Width / 2;
         v2 LeftCorner = {(r32)(CenterX - NetWidth / 2), Bottom - NetHeight * Height};
         DEBUGDrawRectangle(LeftCorner, NetWidth, (int)(NetHeight * Height), Color);
         int X1, X2, Y;  // the furthermost points of the net
